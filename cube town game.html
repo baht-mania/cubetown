@@ -523,7 +523,11 @@
                 targetY: Math.random() * WORLD_SIZE,
                 img: botImgs[i], // i=0 → 캐릭터1.png, i=19 → 캐릭터20.png 순서대로 할당
                 isMoving: false,
-                bobPhase: Math.random() * Math.PI * 2 // 보빙 위상차
+                bobPhase: Math.random() * Math.PI * 2, // 보빙 위상차
+                // === 봇 상태 머신 ('moving' | 'talking') ===
+                state: 'moving',
+                talkUntil: 0,
+                talkText: null
             });
         }
 
@@ -668,28 +672,49 @@
             if (dy !== 0 && !checkCollision(player.x, player.y + dy, player.size)) player.y += dy;
             player.isMoving = (player.x !== oldPx || player.y !== oldPy);
 
-            // --- 봇 이동 로직 ---
+            // --- 봇 이동 + 말풍선 상태 머신 ---
+            // moving: 근처 무작위 target 향해 이동
+            // talking: 위치 고정 + 3초 동안 외계어 말풍선
+            // 전환: target 도달 시 50% talking, 50% 새 target. 이동 중 매우 낮은 확률(약 20초마다)로 갑자기 talking.
             bots.forEach(bot => {
                 const oldBx = bot.x, oldBy = bot.y;
+
+                // talking 상태 처리 (멈춤 + 말풍선)
+                if (bot.state === 'talking') {
+                    if (Date.now() > bot.talkUntil) {
+                        bot.state = 'moving';
+                        bot.talkText = null;
+                        pickNewTarget(bot);
+                    }
+                    bot.isMoving = false;
+                    return;
+                }
+
+                // moving 상태에서 매우 낮은 확률로 갑자기 talking (간헐적 멈춤)
+                if (Math.random() < 0.0008) {
+                    startTalking(bot);
+                    return;
+                }
+
                 let botDx = bot.targetX - bot.x;
                 let botDy = bot.targetY - bot.y;
                 let dist = Math.sqrt(botDx*botDx + botDy*botDy);
 
-                // 목표 지점에 도달했거나 너무 가까워지면 새로운 목표 설정
                 if (dist < 10) {
-                    bot.targetX = Math.random() * WORLD_SIZE;
-                    bot.targetY = Math.random() * WORLD_SIZE;
+                    // target 도달: 50% 확률로 talking, 50% 즉시 새 target (불규칙)
+                    if (Math.random() < 0.5) {
+                        startTalking(bot);
+                    } else {
+                        pickNewTarget(bot);
+                    }
                 } else {
                     let moveX = (botDx / dist) * bot.speed;
                     let moveY = (botDy / dist) * bot.speed;
-
-                    // 건물과 충돌하지 않으면 이동, 충돌하면 즉시 새로운 방향(목표) 설정
                     if (!checkCollision(bot.x + moveX, bot.y + moveY, bot.size)) {
                         bot.x += moveX;
                         bot.y += moveY;
                     } else {
-                        bot.targetX = Math.random() * WORLD_SIZE;
-                        bot.targetY = Math.random() * WORLD_SIZE;
+                        pickNewTarget(bot);
                     }
                 }
                 bot.isMoving = (bot.x !== oldBx || bot.y !== oldBy);
@@ -733,6 +758,82 @@
             const w = def.w * s;
             const h = def.h * s;
             ctx.drawImage(def.img, obj.x - w/2, obj.y - h, w, h);
+        }
+
+        // === 봇 행동 헬퍼 ===
+        // 외계어 생성: 자음 클러스터 위주 음절 풀 → 1~2 단어 × 1~2 음절 + 가끔 구두점
+        const ALIEN_SYLLABLES = ['zk','fnq','blg','rnp','shtn','klop','vrk','mzul','thrak','qpl','wrr','zix','glor','kvar','nyx','plox','brzz','krn','mrk','gth','lor','klar','mool','ree','oo','aii'];
+        const ALIEN_PUNCT = ['!','?','...','*','#'];
+        function generateAlienText() {
+            const wordCount = 1 + Math.floor(Math.random() * 2);
+            const words = [];
+            for (let i = 0; i < wordCount; i++) {
+                let w = '';
+                const sylCount = 1 + Math.floor(Math.random() * 2);
+                for (let j = 0; j < sylCount; j++) {
+                    w += ALIEN_SYLLABLES[Math.floor(Math.random() * ALIEN_SYLLABLES.length)];
+                }
+                words.push(w);
+            }
+            return words.join(' ') + (Math.random() < 0.5 ? ALIEN_PUNCT[Math.floor(Math.random() * ALIEN_PUNCT.length)] : '');
+        }
+
+        // 봇 현재 위치 기준 반경 200~600px 무작위 방향으로 새 target 설정 (불규칙 wandering)
+        function pickNewTarget(bot) {
+            const r = 200 + Math.random() * 400;
+            const a = Math.random() * Math.PI * 2;
+            bot.targetX = Math.max(50, Math.min(WORLD_SIZE - 50, bot.x + Math.cos(a) * r));
+            bot.targetY = Math.max(50, Math.min(WORLD_SIZE - 50, bot.y + Math.sin(a) * r));
+        }
+
+        function startTalking(bot) {
+            bot.state = 'talking';
+            bot.talkUntil = Date.now() + 3000; // 3초
+            bot.talkText = generateAlienText();
+        }
+
+        // 말풍선 그리기 (캐릭터 머리 위)
+        function drawSpeechBubble(x, topY, text) {
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const padding = 10;
+            const w = Math.max(40, ctx.measureText(text).width + padding * 2);
+            const h = 24;
+            const bx = x - w / 2;
+            const by = topY - h;
+            const r = 8;
+            // 둥근 사각형
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(bx + r, by);
+            ctx.arcTo(bx + w, by, bx + w, by + h, r);
+            ctx.arcTo(bx + w, by + h, bx, by + h, r);
+            ctx.arcTo(bx, by + h, bx, by, r);
+            ctx.arcTo(bx, by, bx + w, by, r);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // 꼬리 삼각형 (캐릭터 쪽 향함)
+            ctx.beginPath();
+            ctx.moveTo(x - 5, by + h - 0.5);
+            ctx.lineTo(x, by + h + 6);
+            ctx.lineTo(x + 5, by + h - 0.5);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+            ctx.fill();
+            // 꼬리 외곽선 (양옆만, 위쪽은 사각형 경계와 합쳐지게)
+            ctx.beginPath();
+            ctx.moveTo(x - 5, by + h);
+            ctx.lineTo(x, by + h + 6);
+            ctx.lineTo(x + 5, by + h);
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            // 텍스트
+            ctx.fillStyle = '#1e293b';
+            ctx.fillText(text, x, by + h / 2);
         }
 
         // 큐브 그리는 함수 (z-sort에 포함시키기 위해 분리)
@@ -792,6 +893,11 @@
             ctx.textAlign = 'center';
             const labelY = imgReady ? (y + 15 - drawH - 5 + bobOffset) : (y - 20 + bobOffset);
             ctx.fillText(name, x, labelY);
+
+            // 말풍선 (봇이 talking 상태일 때만, 이름표 위쪽으로)
+            if (!isPlayer && entity.state === 'talking' && entity.talkText) {
+                drawSpeechBubble(x, labelY - 14, entity.talkText);
+            }
         }
 
         // 화면 그리기

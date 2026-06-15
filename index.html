@@ -1,0 +1,2035 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metaverse Plaza: Cube Collector with Bots</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0b1220;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+        canvas {
+            display: block;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+        }
+        .hud-box {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 10px 18px;
+            border-radius: 12px;
+            margin-bottom: 6px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+        h1 {
+            margin: 0 0 3px 0;
+            font-size: 18px;
+            color: #38bdf8;
+        }
+        p {
+            margin: 0;
+            font-size: 13px;
+            color: #cbd5e1;
+            line-height: 1.45;
+        }
+        #score-display {
+            font-size: 22px;
+            font-weight: bold;
+            color: #f59e0b;
+        }
+        .controls {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 4px;
+        }
+        /* === 건물 진입 팝업 === */
+        #popup-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: popupFadeIn 0.18s ease-out;
+        }
+        #popup-overlay.show { display: flex; }
+        @keyframes popupFadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        #popup {
+            background: rgba(15, 23, 42, 0.96);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            padding: 32px 36px 26px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+            min-width: 320px;
+            max-width: 440px;
+            text-align: center;
+            animation: popupPop 0.22s cubic-bezier(.34, 1.56, .64, 1);
+        }
+        @keyframes popupPop {
+            from { transform: scale(0.9); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+        #popup-text {
+            font-size: 17px;
+            line-height: 1.5;
+            margin: 0 0 22px;
+            color: #f1f5f9;
+            font-weight: 500;
+        }
+        #popup-text strong {
+            color: #38bdf8;
+            font-weight: 700;
+        }
+        .popup-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .popup-buttons button {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.15s;
+            font-family: inherit;
+            font-weight: 600;
+        }
+        #popup-yes {
+            background: #3b82f6;
+            color: white;
+        }
+        #popup-yes:hover { background: #2563eb; }
+        #popup-yes:active { transform: scale(0.97); }
+        #popup-no {
+            background: rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+        }
+        #popup-no:hover { background: rgba(255, 255, 255, 0.16); }
+        #popup-no:active { transform: scale(0.97); }
+
+        /* === 회사 소개 칸반보드 (상단 우측) === */
+        #company-board {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(10px);
+            border-radius: 14px;
+            padding: 14px 18px 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            width: max-content;
+            max-width: min(400px, calc(100vw - 40px));
+            pointer-events: none;
+            z-index: 5;
+        }
+        .kanban-header {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .kanban-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 280px;
+        }
+        .kanban-column {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .kanban-col-title {
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            padding-left: 2px;
+        }
+        .kanban-card {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-left-width: 3px;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 13px;
+            color: #e2e8f0;
+            line-height: 1.45;
+            font-weight: 500;
+        }
+        .kanban-column.col-company .kanban-col-title { color: #38bdf8; }
+        .kanban-column.col-company .kanban-card     { border-left-color: #38bdf8; }
+        .kanban-column.col-address .kanban-col-title { color: #f59e0b; }
+        .kanban-column.col-address .kanban-card     { border-left-color: #f59e0b; }
+        .kanban-column.col-ceo     .kanban-col-title { color: #10b981; }
+        .kanban-column.col-ceo     .kanban-card     { border-left-color: #10b981; }
+
+        /* === 미니게임 모달 === */
+        #minigame-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+            animation: popupFadeIn 0.2s ease-out;
+        }
+        #minigame-overlay.show { display: flex; }
+        #minigame-frame {
+            background: rgba(15, 23, 42, 0.98);
+            border: 2px solid #38bdf8;
+            border-radius: 16px;
+            width: min(640px, 90vw);
+            height: min(520px, 80vh);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 30px 80px rgba(56, 189, 248, 0.3);
+            animation: popupPop 0.25s cubic-bezier(.34, 1.56, .64, 1);
+        }
+        #minigame-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #minigame-header h2 {
+            margin: 0;
+            color: #38bdf8;
+            font-size: 18px;
+            letter-spacing: 0.1em;
+            font-family: monospace;
+        }
+        #minigame-close {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: #cbd5e1;
+            font-size: 22px;
+            line-height: 1;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        #minigame-close:hover { background: rgba(255, 255, 255, 0.18); }
+        #minigame-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #minigame-placeholder {
+            color: #94a3b8;
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        #minigame-placeholder strong {
+            color: #f1f5f9;
+            font-size: 16px;
+            display: block;
+            margin-bottom: 10px;
+        }
+        #minigame-placeholder code {
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        /* === 가상 조이스틱 (모바일) === */
+        #joystick-zone {
+            display: none;
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 120px;
+            height: 120px;
+            z-index: 20;
+            touch-action: none;
+        }
+        #joystick-base {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.10);
+            border: 2px solid rgba(255, 255, 255, 0.28);
+            position: relative;
+            backdrop-filter: blur(4px);
+        }
+        #joystick-thumb {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: rgba(56, 189, 248, 0.72);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
+            pointer-events: none;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+</head>
+<body>
+
+    <div id="ui-layer">
+        <div class="hud-box">
+            <h1>CUBE TOWN</h1>
+            <p>보유 큐브: <span id="score-display">0</span></p>
+        </div>
+        <div class="hud-box controls">
+            <p>⌨️ <b>이동:</b> W, A, S, D 또는 방향키</p>
+            <p>🎯 <b>목표:</b> 마을 곳곳에 생성되는 큐브를 수집하세요!</p>
+            <p>🤖 <b>주민:</b> 다양한 국적의 멤버들이 CUBE TOWN에 존재합니다.</p>
+        </div>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 가상 조이스틱 (모바일 터치 조작) -->
+    <div id="joystick-zone">
+        <div id="joystick-base">
+            <div id="joystick-thumb"></div>
+        </div>
+    </div>
+
+    <!-- 회사 소개 칸반보드 (상단 중앙) -->
+    <div id="company-board">
+        <div class="kanban-header">ABOUT US</div>
+        <div class="kanban-grid">
+            <div class="kanban-column col-company">
+                <div class="kanban-col-title">Company</div>
+                <div class="kanban-card">SER Co., Ltd.</div>
+            </div>
+            <div class="kanban-column col-ceo">
+                <div class="kanban-col-title">Contact</div>
+                <div class="kanban-card">블라블라@블라블라.com</div>
+            </div>
+            <div class="kanban-column col-address">
+                <div class="kanban-col-title">Address</div>
+                <div class="kanban-card">A122, 7F, 11-9, Teheran-ro 77-gil,<br>Gangnam-gu, Seoul, Republic of Korea</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BGM (브라우저 정책상 첫 사용자 인터랙션 후 재생) -->
+    <audio id="bgm" loop preload="auto">
+        <source src="assets/BGM/Market_Day_at_the_Shrine.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- 건물 진입 팝업 -->
+    <div id="popup-overlay">
+        <div id="popup">
+            <p id="popup-text"></p>
+            <div class="popup-buttons">
+                <button id="popup-yes">응. 이동할게</button>
+                <button id="popup-no">아니, 다른 곳으로 갈게</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 미니게임 모달 (placeholder — 사용자 미니게임 코드는 window.startMiniGame()으로 hook) -->
+    <div id="minigame-overlay">
+        <div id="minigame-frame">
+            <div id="minigame-header">
+                <h2>MINI GAME ZONE</h2>
+                <button id="minigame-close" title="닫기">×</button>
+            </div>
+            <div id="minigame-content">
+                <div id="minigame-placeholder">
+                    <strong>미니게임 준비 중</strong>
+                    별도 미니게임 코드를 <code>window.startMiniGame(onComplete)</code> 함수로 등록하면<br>
+                    이 자리에 자동 연결됩니다.<br><br>
+                    60초 후 자동 종료, 또는 × 버튼으로 즉시 닫기
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 편집 모드 HUD (E 키로 토글) -->
+    <div id="edit-mode-hud" class="hud-box" style="display:none; position:fixed; top:20px; right:20px; max-width:280px; pointer-events:none;">
+        <h1 style="color:#f59e0b; margin-bottom:8px;">[ EDIT MODE ]</h1>
+        <p style="margin:3px 0;"><b>E</b>: 편집 종료</p>
+        <p style="margin:3px 0;"><b>좌클릭+드래그</b>: 오브젝트 이동</p>
+        <p style="margin:3px 0;"><b>우클릭+드래그</b>: 카메라 이동</p>
+        <p style="margin:3px 0;"><b>방향키</b>: 1px (Shift: 10px)</p>
+        <p style="margin:3px 0;"><b>휠 / [</b> · <b>]</b>: 크기 조정 (Shift: 큰 단계)</p>
+        <p style="margin:3px 0;"><b>, / .</b>: 충돌 반경 조정 (Shift: 큰 단계)</p>
+        <p style="margin:3px 0;"><b>Delete</b>: 선택 오브젝트 제거</p>
+        <p style="margin:3px 0;"><b>R</b>: 기본 위치로 리셋</p>
+        <p style="margin:3px 0; color:#10b981;"><b>B</b>: 박스 그리기 모드 ON/OFF</p>
+        <p style="margin:3px 0; color:#10b981;"><b>좌클릭+드래그</b> (B 모드): 충돌 박스 추가</p>
+        <p style="margin:3px 0; color:#10b981;"><b>X</b> (B 모드): 마지막 박스 제거</p>
+        <p style="margin:3px 0;"><b>S</b>: objects[] + 박스 콘솔+클립보드 출력</p>
+        <div id="edit-selected" style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15); display:none;">
+            <p style="margin:3px 0;"><b style="color:#f59e0b;">선택:</b> <span id="edit-key"></span></p>
+            <p style="margin:3px 0;"><b style="color:#f59e0b;">좌표:</b> (<span id="edit-x"></span>, <span id="edit-y"></span>)</p>
+            <p style="margin:3px 0;"><b style="color:#f59e0b;">크기:</b> <span id="edit-scale">100%</span></p>
+            <p style="margin:3px 0;"><b style="color:#ef4444;">충돌:</b> <span id="edit-collide">30</span>px</p>
+        </div>
+        <p style="margin-top:10px; color:#10b981; font-size:11px;">자동 저장: <span id="save-time">대기 중</span></p>
+        <p style="margin:3px 0; color:#94a3b8; font-size:11px;">cursor: <span id="edit-mouse">0, 0</span></p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false; // 픽셀룩 보존
+
+        // === BGM ===
+        // 브라우저 자동재생 정책 때문에 첫 사용자 인터랙션(키/클릭) 시 재생 시작
+        const bgm = document.getElementById('bgm');
+        bgm.volume = 0.35;
+        function startBGM() {
+            bgm.play().catch(() => {});
+            window.removeEventListener('keydown', startBGM);
+            window.removeEventListener('click', startBGM);
+        }
+        window.addEventListener('keydown', startBGM, { once: true });
+        window.addEventListener('click', startBGM, { once: true });
+
+        // === 건물 진입 팝업 ===
+        // POPUP_ENABLED: 전역 ON/OFF 스위치. false면 모든 팝업 트리거 중단 (interaction 필드는 그대로 유지).
+        // 이후 특정 오브젝트에만 적용하려면 → POPUP_ENABLED=true + objectDefs 필요한 곳만 interaction 유지/추가
+        const POPUP_ENABLED = false;
+        const popupOverlay = document.getElementById('popup-overlay');
+        const popupText    = document.getElementById('popup-text');
+        const popupYes     = document.getElementById('popup-yes');
+        const popupNo      = document.getElementById('popup-no');
+        let popupOpen = false;
+        let currentPopupUrl = null;
+        let activeZoneKey = null; // 현재 안에 있는 zone — 같은 zone 안에서 팝업 닫고 그 안에 머물러도 재트리거 X
+        const INTERACTION_RADIUS = 240; // 오브젝트 발 위치 기준 반경
+
+        // 한국어 조사 자동 처리: 받침 있으면 "으로", 없으면 "로"
+        function withSubjectParticle(label) {
+            const last = label[label.length - 1];
+            const code = last.charCodeAt(0);
+            const isHangul = code >= 0xAC00 && code <= 0xD7A3;
+            const hasFinal = isHangul ? ((code - 0xAC00) % 28) !== 0 : true;
+            return hasFinal ? '으로' : '로';
+        }
+
+        function showPopup(obj) {
+            const meta = objectDefs[obj.key].interaction;
+            popupText.innerHTML = `<strong>${meta.label}</strong>${withSubjectParticle(meta.label)} 이동하시겠습니까?`;
+            currentPopupUrl = meta.url;
+            popupOverlay.classList.add('show');
+            popupOpen = true;
+        }
+        function closePopup() {
+            popupOverlay.classList.remove('show');
+            popupOpen = false;
+            currentPopupUrl = null;
+        }
+        popupYes.addEventListener('click', () => {
+            if (currentPopupUrl) window.location.href = currentPopupUrl;
+        });
+        popupNo.addEventListener('click', closePopup);
+        // ESC로도 닫기
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && popupOpen) closePopup();
+        });
+
+        // 화면 크기 설정
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            ctx.imageSmoothingEnabled = false; // canvas 크기 변경 시 context 상태가 리셋되므로 재설정
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // 게임 설정
+        const WORLD_SIZE = 3000;
+        let score = 0;
+        let frameCount = 0;
+
+        // 캐릭터 이미지 프리로드 (플레이어 1 + 봇 20 = 21장)
+        const playerImg = new Image();
+        playerImg.src = 'assets/avatars/0. 메인캐릭터.png';
+        const botImgs = [];
+        for (let i = 1; i <= 20; i++) {
+            const img = new Image();
+            img.src = `assets/avatars/캐릭터${i}.png`;
+            botImgs.push(img);
+        }
+
+        // 배경 맵 이미지 (1500×1500 → 게임 좌표 3000×3000 으로 정수배 ×2 nearest-neighbor 업스케일)
+        const bgImg = new Image();
+        bgImg.src = 'assets/game/결과물2.png';
+
+        // === 건물/소품 오브젝트 정의 ===
+        // key → { src, w(표시 가로), h(표시 세로), collideRatio: [가로비, 세로비] }
+        //   collideRatio가 [0,0]이면 통과 가능 (다리/소품/랜드마크 외곽 등)
+        //   충돌 박스는 오브젝트의 발(footer) 부근 footprint만 잡음
+        // === interaction 필드 ===
+        // - interaction: 캐릭터 진입 시 팝업 정의 (코드는 유지하되 POPUP_ENABLED=false로 전역 비활성).
+        //   이후 다시 켜려면 아래 POPUP_ENABLED를 true로.
+        // - 사용자 요청으로 noCollide 플래그 제거 → 01~26 모두 충돌 (반경 30px)
+        const objectDefs = {
+            hanok_gate:     { src: '01_korea_hanok_gate.png',     w: 550, h: 550 },
+            tourism_center: { src: '02_korea_tourism_center.png', w: 550, h: 550, interaction: { label: '한국여행센터', url: 'https://www.naver.com' } },
+            hanok_shop:    { src: '03_korea_hanok_shop.png',     w: 380, h: 380, interaction: { label: '한옥상점',     url: 'https://www.naver.com' } },
+            ramen:         { src: '04_japan_ramen.png',          w: 380, h: 380, interaction: { label: '라멘집',       url: 'https://www.naver.com' } },
+            night_market:  { src: '05_taiwan_market.png',        w: 320, h: 320, interaction: { label: '야시장',       url: 'https://www.naver.com' } },
+            fountain:      { src: '06_fountain.png',             w: 450, h: 450 },
+            red_bridge:    { src: '07_red_bridge.png',           w: 520, h: 400 },
+            modern_gallery:{ src: '08_modern_gallery.png',       w: 600, h: 550, interaction: { label: '모던 갤러리',  url: 'https://www.naver.com' } },
+            torii:         { src: '09_japan_torii.png',          w: 380, h: 420, interaction: { label: '토리이',       url: 'https://www.naver.com' } },
+            statue_liberty:{ src: '10_us_statue_liberty.png',    w: 350, h: 420, collideRatio: [0.40, 0.25] },
+            big_ben:       { src: '11_uk_big_ben.png',           w: 320, h: 400, collideRatio: [0.45, 0.25] },
+            eiffel:        { src: '12_fr_eiffel.png',            w: 340, h: 420, collideRatio: [0.45, 0.20] },
+            moai:          { src: '13_moai.png',                 w: 300, h: 340, collideRatio: [0.50, 0.30] },
+            boulangerie:   { src: '14_fr_boulangerie.png',       w: 380, h: 380, collideRatio: [0.70, 0.25] },
+            diner:         { src: '15_us_diner.png',             w: 380, h: 380, collideRatio: [0.75, 0.25] },
+            pub:           { src: '16_uk_pub.png',               w: 370, h: 370, collideRatio: [0.70, 0.25] },
+            phone_booth:   { src: '17_uk_telepohone.png',        w: 200, h: 270, collideRatio: [0.45, 0.30] },
+            china_food:    { src: '18_cn_chinafood.png',         w: 240, h: 320, collideRatio: [0.40, 0.20] },
+            milktea:       { src: '19_tw_milktea.png',           w: 280, h: 290, collideRatio: [0,    0   ] },
+            red_light:     { src: '20_jp_redlight.png',          w: 180, h: 220, collideRatio: [0.30, 0.25] },
+            bench:         { src: '21_bench.png',                w: 240, h: 180, collideRatio: [0,    0   ] },
+            streetlight:   { src: '22_crosslight.png',           w: 140, h: 280, collideRatio: [0,    0   ] },
+            flowers:       { src: '23_flowers.png',              w: 220, h: 180, collideRatio: [0,    0   ] },
+            map_sign:      { src: '24_map.png',                  w: 240, h: 280, collideRatio: [0,    0   ] },
+            arrow_sign:    { src: '25_arrow.png',                w: 200, h: 250, collideRatio: [0,    0   ] },
+            sakura:        { src: '26_sakura.png',               w: 380, h: 380, collideRatio: [0.25, 0.25] }
+        };
+        // 이미지 프리로드
+        for (const k in objectDefs) {
+            const img = new Image();
+            img.src = 'assets/objects/' + objectDefs[k].src;
+            objectDefs[k].img = img;
+        }
+
+        // === localStorage 자동 저장 키 ===
+        // 편집 모드에서 옮긴 오브젝트 위치는 브라우저에 자동 저장되어 새로고침해도 유지됩니다.
+        // R 키로 리셋, 코드 변경 시 v 번호 올리면 stale 저장 무시.
+        const STORAGE_KEY = 'cube_town_object_positions_v1';
+
+        // 저장된 위치 불러오기 (없거나 손상이면 null)
+        // scale은 옵션 (없으면 1.0). 코드에 신규 오브젝트 추가 시 마이그레이션 (사용자 변경 보존)
+        function loadObjectsFromStorage() {
+            try {
+                const json = localStorage.getItem(STORAGE_KEY);
+                if (!json) return null;
+                const data = JSON.parse(json);
+                if (!Array.isArray(data.objects)) return null;
+                const valid = data.objects.every(o =>
+                    typeof o.key === 'string' && objectDefs[o.key] &&
+                    typeof o.x === 'number' && typeof o.y === 'number' &&
+                    isFinite(o.x) && isFinite(o.y) &&
+                    (o.scale === undefined || (typeof o.scale === 'number' && isFinite(o.scale) && o.scale > 0)) &&
+                    (o.collideRadius === undefined || (typeof o.collideRadius === 'number' && isFinite(o.collideRadius) && o.collideRadius >= 0))
+                );
+                if (!valid) {
+                    console.warn('[Storage] 저장 데이터 검증 실패 → 기본 위치 사용');
+                    return null;
+                }
+                const loaded = data.objects.map(o => {
+                    const out = { key: o.key, x: o.x, y: o.y };
+                    if (o.scale !== undefined) out.scale = o.scale;
+                    if (o.collideRadius !== undefined) out.collideRadius = o.collideRadius;
+                    return out;
+                });
+                // 마이그레이션: 코드에 신규 오브젝트 추가됨 → 저장된 뒤에 default 보충
+                if (loaded.length < DEFAULT_OBJECTS.length) {
+                    for (let i = loaded.length; i < DEFAULT_OBJECTS.length; i++) {
+                        loaded.push({ ...DEFAULT_OBJECTS[i] });
+                    }
+                    console.log(`[Storage] 신규 오브젝트 ${DEFAULT_OBJECTS.length - data.objects.length}개 추가됨 (기존 위치는 보존)`);
+                } else if (loaded.length > DEFAULT_OBJECTS.length) {
+                    console.warn('[Storage] 저장 개수가 코드보다 많음 → 기본 사용 (R로 리셋 가능)');
+                    return null;
+                } else {
+                    console.log(`[Storage] 저장된 ${loaded.length}개 오브젝트 위치 로드됨`);
+                }
+                return loaded;
+            } catch (e) {
+                console.warn('[Storage] 로드 실패:', e.message);
+                return null;
+            }
+        }
+
+        // 오브젝트 인스턴스 배치 — (x, y)는 오브젝트의 발(footer) 좌표
+        // === 1~9: 맵 3×3 그리드 (각 셀 1000×1000, 셀 중심에 메인 오브젝트) ===
+        // [1 한옥문]    [2 여행센터]   [3 한옥상점]
+        // [4 라멘집]    [7 빨간 다리]  [5 야시장]
+        // [6 분수]      [8 갤러리]     [9 토리이]
+        // 10~26: 나머지 미니어처/상점/소품은 셀 사이 공간에 자연 배치
+        // DEFAULT_OBJECTS는 코드의 권위(reset 기준). objects는 localStorage가 우선.
+        const DEFAULT_OBJECTS = [
+            { key: 'tourism_center', x: 620, y: 809, scale: 1.15, collideRadius: 40 },
+            { key: 'hanok_shop', x: 499, y: 1803, scale: 1.6 },
+            { key: 'ramen', x: 679, y: 1439, scale: 1.4 },
+            { key: 'red_bridge', x: 1524, y: 1673 },
+            { key: 'night_market', x: 2582, y: 1351, scale: 1.3 },
+            { key: 'fountain', x: 1501, y: 955, scale: 2 },
+            { key: 'torii', x: 593, y: 1143 },
+            { key: 'statue_liberty', x: 1492, y: 2767, scale: 3 },
+            { key: 'big_ben', x: 2597, y: 805, scale: 2.25 },
+            { key: 'eiffel', x: 1499, y: 1427, scale: 2.35 },
+            { key: 'moai', x: 1790, y: 2163 },
+            { key: 'boulangerie', x: 2434, y: 2637, scale: 2.05 },
+            { key: 'diner', x: 416, y: 2472, scale: 1.8 },
+            { key: 'pub', x: 2429, y: 1848, scale: 1.75 },
+            { key: 'phone_booth', x: 2074, y: 2040, scale: 1.15 },
+            { key: 'china_food', x: 2345, y: 1290 },
+            { key: 'milktea', x: 726, y: 2534, scale: 1.45 },
+            { key: 'red_light', x: 892, y: 1460 },
+            { key: 'sakura', x: 1231, y: 1011 },
+            { key: 'bench', x: 1850, y: 1789 },
+            { key: 'bench', x: 1235, y: 1797 },
+            { key: 'streetlight', x: 1150, y: 825 },
+            { key: 'streetlight', x: 2000, y: 1000 },
+            { key: 'streetlight', x: 978, y: 1839 },
+            { key: 'streetlight', x: 2000, y: 2000, scale: 1.2 },
+            { key: 'flowers', x: 1013, y: 1220 },
+            { key: 'flowers', x: 1807, y: 1858 },
+            { key: 'map_sign', x: 1653, y: 1973, scale: 0.65 },
+            { key: 'arrow_sign', x: 1169, y: 1173 },
+            { key: 'sakura', x: 819, y: 410 },
+            { key: 'sakura', x: 861, y: 1209, scale: 1.2 },
+            { key: 'sakura', x: 2645, y: 2755 },
+            { key: 'sakura', x: 2700, y: 1100 },
+            { key: 'sakura', x: 1108, y: 2123, scale: 1.3 },
+            { key: 'sakura', x: 2113, y: 2411 },
+            { key: 'bench', x: 1119, y: 2164 },
+            { key: 'bench', x: 2079, y: 2450 },
+            { key: 'bench', x: 2546, y: 2787 },
+            { key: 'bench', x: 1347, y: 1025 },
+            { key: 'bench', x: 2610, y: 1107 },
+            { key: 'streetlight', x: 1681, y: 1009 },
+            { key: 'streetlight', x: 1344, y: 1813 },
+            { key: 'streetlight', x: 261, y: 1923 },
+            { key: 'streetlight', x: 2750, y: 1238 },
+            { key: 'streetlight', x: 234, y: 568 },
+            { key: 'arrow_sign', x: 1128, y: 1635 },
+            { key: 'arrow_sign', x: 811, y: 1952 },
+            { key: 'red_light', x: 438, y: 1336 },
+            { key: 'streetlight', x: 500, y: 1500 },
+            { key: 'streetlight', x: 2500, y: 1500 },
+            { key: 'streetlight', x: 300, y: 800 },
+            { key: 'arrow_sign', x: 500, y: 1050 },
+            { key: 'arrow_sign', x: 2500, y: 1050 },
+            { key: 'arrow_sign', x: 1050, y: 2000 },
+            { key: 'torii', x: 565, y: 2015 },
+            { key: 'arrow_sign', x: 1050, y: 2000 },
+            { key: 'red_light', x: 2650, y: 2400 },
+            { key: 'red_light', x: 2150, y: 2700 },
+            { key: 'torii', x: 200, y: 2400 },
+        ];
+        // localStorage가 우선, 없거나 손상이면 DEFAULT_OBJECTS의 deep copy 사용
+        const objects = loadObjectsFromStorage() || DEFAULT_OBJECTS.map(o => ({ ...o }));
+
+        // 키 입력 상태
+        const keys = {};
+        window.addEventListener('keydown', (e) => keys[e.code] = true);
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        // 카메라 객체
+        const camera = { x: 0, y: 0 };
+
+        // 터치 조이스틱 입력 (모바일용)
+        const touchInput = { dx: 0, dy: 0 };
+
+        // === 줌 시스템 (일반 모드 전용) ===
+        // zoomLevel 1.0 = 기본, 1.5 = 1.5배 영역 보임 (캐릭터·오브젝트는 67% 크기)
+        // 휠 위(deltaY<0) = 줌인(1.0 쪽), 휠 아래(deltaY>0) = 줌아웃(1.5 쪽)
+        const ZOOM_KEY = 'cube_town_zoom_v1';
+        function loadZoom() {
+            try {
+                const v = parseFloat(localStorage.getItem(ZOOM_KEY) || '1');
+                // 1.0 미만은 default, 1.2 초과는 1.2로 clamp (이전 1.5 저장값 자동 보정)
+                if (isFinite(v) && v >= 1.0) return Math.min(v, 1.2);
+            } catch (e) {}
+            return 1.0;
+        }
+        function saveZoom() {
+            try { localStorage.setItem(ZOOM_KEY, String(zoomLevel)); } catch (e) {}
+        }
+        let zoomLevel = loadZoom();
+
+        // 플레이어 객체
+        // 시작 위치: 입구 광장 빈 자리 (800, 800). WORLD/2=(1500,1500)은 red_bridge 충돌 박스 정중앙이라 갇힘.
+        // 추가로 findSafePlayerPosition()이 게임 로드 시 충돌 영역이면 자동으로 빈 자리로 이동.
+        const player = {
+            x: 800,
+            y: 800,
+            size: 15,
+            speed: 6.552, // 이전 5.46의 +20% (누적: 6 → 4.2 → 5.46 → 6.552). 봇은 현재 속도 유지
+            color: '#3b82f6',
+            name: '나',
+            img: playerImg,
+            isMoving: false,
+            bobPhase: Math.random() * Math.PI * 2 // 각 캐릭터의 보빙 위상차 (동기화 방지)
+        };
+
+        // 장애물 (충돌 박스) - objects[] 의 collideRatio 값을 기반으로 자동 생성.
+        // 발(footer) 좌표 기준 발 footprint만 충돌 → 큰 건물도 윗부분(지붕/탑신)은 통과 가능 = 시각적 자연
+        // 충돌 시스템: 사용자 요청으로 자동 생성 비활성화.
+        // 향후 수동 좌표 입력으로 충돌 영역 설정 → MANUAL_COLLISION_BOXES에 push.
+        // 다시 자동 생성하려면 COLLISION_AUTO_GENERATE = true.
+        const COLLISION_AUTO_GENERATE = false;
+        const COLLIDE_RADIUS = 30;
+        const MANUAL_COLLISION_BOXES = [
+            // 향후 좌표 입력 예시:
+            // { x: 1000, y: 500, w: 200, h: 100, label: 'custom-1' },
+        ];
+
+        // === 빨간 박스 대상 오브젝트 (사용자 스크린샷 기준 12개) ===
+        // 각 오브젝트의 발 위치 + PNG 크기*scale로 자동 박스 추가 (PNG의 75% 영역, 발 기준 위쪽 95%)
+        // 사용자가 편집 모드에서 박스 그리기 도구(B 키)로 미세 조정 가능
+        const COLLISION_TARGET_KEYS = new Set([
+            'tourism_center', 'fountain', 'ramen', 'hanok_shop',
+            'eiffel', 'night_market', 'china_food', 'pub',
+            'diner', 'milktea', 'statue_liberty', 'boulangerie'
+        ]);
+        for (const obj of objects) {
+            if (!COLLISION_TARGET_KEYS.has(obj.key)) continue;
+            const def = objectDefs[obj.key];
+            const s = obj.scale || 1;
+            const bw = def.w * s * 0.75;
+            const bh = def.h * s * 0.75;
+            MANUAL_COLLISION_BOXES.push({
+                x: obj.x - bw / 2,
+                y: obj.y - bh * 0.95,
+                w: bw, h: bh,
+                label: obj.key + '-auto'
+            });
+        }
+
+        const buildings = [];
+        if (COLLISION_AUTO_GENERATE) {
+            for (const obj of objects) {
+                const def = objectDefs[obj.key];
+                if (def.noCollide) continue;
+                const r = obj.collideRadius ?? COLLIDE_RADIUS;
+                if (r <= 0) continue;
+                buildings.push({
+                    x: obj.x - r,
+                    y: obj.y - r,
+                    w: r * 2,
+                    h: r * 2,
+                    label: obj.key
+                });
+            }
+        }
+        for (const b of MANUAL_COLLISION_BOXES) {
+            buildings.push({ ...b });
+        }
+
+        // === 미니게임존 ===
+        // 캐릭터가 이 원형 영역 안에 들어오면 자동으로 미니게임 트리거.
+        // 사용자 미니게임 코드: window.startMiniGame(onComplete) 함수를 정의하면 우리 코드가 자동 호출.
+        // 미정의 시 placeholder 모달 표시 (60초 카운트 + 닫기 버튼).
+        const MINI_GAME_ZONE = {
+            x: 2280,       // 이벤트 광장 (분수 옆) — 우상단
+            y: 600,
+            radius: 200,   // 반경 (캐릭터가 이 안에 들어오면 트리거)
+            label: 'MINI GAME ZONE'
+        };
+        let miniGameActive = false;
+        let miniGameInZone = false; // 한 번 트리거 후 zone 밖으로 나갈 때까지 재트리거 X
+
+        function triggerMiniGame() {
+            if (miniGameActive) return;
+            miniGameActive = true;
+            if (typeof window.startMiniGame === 'function') {
+                window.startMiniGame(onMiniGameEnd);
+            } else {
+                showMiniGamePlaceholder();
+            }
+        }
+        function onMiniGameEnd() {
+            miniGameActive = false;
+            hideMiniGamePlaceholder();
+        }
+        function showMiniGamePlaceholder() {
+            const overlay = document.getElementById('minigame-overlay');
+            if (overlay) overlay.classList.add('show');
+            // 60초 자동 종료 타이머
+            const timer = setTimeout(() => {
+                if (miniGameActive) onMiniGameEnd();
+            }, 60000);
+            const closeBtn = document.getElementById('minigame-close');
+            if (closeBtn) {
+                closeBtn.onclick = () => {
+                    clearTimeout(timer);
+                    onMiniGameEnd();
+                };
+            }
+        }
+        function hideMiniGamePlaceholder() {
+            const overlay = document.getElementById('minigame-overlay');
+            if (overlay) overlay.classList.remove('show');
+        }
+
+        function checkMiniGameZone() {
+            if (miniGameActive) return;
+            const dx = player.x - MINI_GAME_ZONE.x;
+            const dy = player.y - MINI_GAME_ZONE.y;
+            const dist = Math.hypot(dx, dy);
+            const inside = dist < MINI_GAME_ZONE.radius;
+            if (inside && !miniGameInZone) {
+                miniGameInZone = true;
+                triggerMiniGame();
+            } else if (!inside) {
+                miniGameInZone = false;
+            }
+        }
+
+        // 봇 (NPC) 배열 및 생성 로직
+        const bots = [];
+        const NUM_BOTS = 20;
+        const botColors = ['#10b981', '#ec4899', '#8b5cf6', '#f97316', '#06b6d4'];
+
+        for(let i=0; i<NUM_BOTS; i++) {
+            bots.push({
+                x: Math.random() * (WORLD_SIZE - 100) + 50,
+                y: Math.random() * (WORLD_SIZE - 100) + 50,
+                size: 15,
+                speed: 2 + Math.random() * 2, // 2 ~ 4의 속도
+                color: botColors[Math.floor(Math.random() * botColors.length)],
+                name: `Bot-${i+1}`,
+                targetX: Math.random() * WORLD_SIZE,
+                targetY: Math.random() * WORLD_SIZE,
+                img: botImgs[i], // i=0 → 캐릭터1.png, i=19 → 캐릭터20.png 순서대로 할당
+                isMoving: false,
+                bobPhase: Math.random() * Math.PI * 2, // 보빙 위상차
+                // === 봇 상태 머신 ('moving' | 'talking') ===
+                state: 'moving',
+                talkUntil: 0,
+                talkText: null
+            });
+        }
+
+        // 수집품 (큐브)
+        let cubes = [];
+        const MAX_CUBES = 30;
+
+        function spawnCube() {
+            if (cubes.length >= MAX_CUBES) return;
+            
+            let x, y, validPosition;
+            do {
+                validPosition = true;
+                x = Math.random() * (WORLD_SIZE - 100) + 50;
+                y = Math.random() * (WORLD_SIZE - 100) + 50;
+
+                for (let b of buildings) {
+                    if (x > b.x - 20 && x < b.x + b.w + 20 && 
+                        y > b.y - 20 && y < b.y + b.h + 20) {
+                        validPosition = false;
+                        break;
+                    }
+                }
+            } while (!validPosition);
+
+            cubes.push({ x: x, y: y, size: 10, color: '#f59e0b', bobOffset: Math.random() * Math.PI * 2 });
+        }
+
+        for(let i=0; i<20; i++) spawnCube();
+
+        // 시작 위치가 어느 interaction zone 안이면 그 zone을 미리 active로 설정
+        // → 게임 로드 직후 자동 팝업 트리거 방지. 사용자가 zone 밖으로 나갔다 다시 들어와야 팝업이 뜸.
+        for (const obj of objects) {
+            const def = objectDefs[obj.key];
+            if (!def.interaction) continue;
+            if (Math.hypot(player.x - obj.x, player.y - obj.y) < INTERACTION_RADIUS) {
+                activeZoneKey = obj.key;
+                break;
+            }
+        }
+
+        // === 시작 위치 안전 검사 ===
+        // 플레이어가 어떤 충돌 박스 안에 박혀 있으면 영구히 못 움직임. 나선형으로 빈 자리 검색.
+        // (오브젝트 좌표/충돌 반경 변경 시에도 자동 복구되는 안전망)
+        // checkCollision은 아래에 function 선언으로 정의됨 — hoisting되어 여기서 호출 가능.
+        function findSafePlayerPosition() {
+            if (!checkCollision(player.x, player.y, player.size)) return;
+            const startX = player.x, startY = player.y;
+            for (let r = 50; r <= 1000; r += 30) {
+                for (let a = 0; a < 360; a += 15) {
+                    const rad = a * Math.PI / 180;
+                    const tx = startX + Math.cos(rad) * r;
+                    const ty = startY + Math.sin(rad) * r;
+                    if (tx >= player.size && tx <= WORLD_SIZE - player.size &&
+                        ty >= player.size && ty <= WORLD_SIZE - player.size &&
+                        !checkCollision(tx, ty, player.size)) {
+                        console.log(`[Safety] 시작 위치 자동 이동: (${Math.round(startX)},${Math.round(startY)}) → (${Math.round(tx)},${Math.round(ty)})`);
+                        player.x = tx;
+                        player.y = ty;
+                        return;
+                    }
+                }
+            }
+            console.warn('[Safety] 안전한 빈 자리를 못 찾음 — 시작 위치 그대로');
+        }
+        findSafePlayerPosition();
+
+        // AABB 충돌 체크 함수 (반경 매개변수 추가)
+        function checkCollision(nextX, nextY, radius) {
+            if (nextX - radius < 0 || nextX + radius > WORLD_SIZE ||
+                nextY - radius < 0 || nextY + radius > WORLD_SIZE) {
+                return true;
+            }
+
+            for (let b of buildings) {
+                let testX = nextX;
+                let testY = nextY;
+
+                if (nextX < b.x) testX = b.x;
+                else if (nextX > b.x + b.w) testX = b.x + b.w;
+
+                if (nextY < b.y) testY = b.y;
+                else if (nextY > b.y + b.h) testY = b.y + b.h;
+
+                let distX = nextX - testX;
+                let distY = nextY - testY;
+                let distance = Math.sqrt((distX*distX) + (distY*distY));
+
+                if (distance <= radius) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // 1~9번 메인 오브젝트 진입 검사 (interaction 필드가 있는 것만)
+        // POPUP_ENABLED=false면 전체 트리거 중단 (코드는 살아 있으므로 true로 켜면 즉시 동작)
+        function checkInteractionZones() {
+            if (!POPUP_ENABLED) return;
+            if (popupOpen) return;
+            let foundZone = null;
+            for (const obj of objects) {
+                const def = objectDefs[obj.key];
+                if (!def.interaction) continue;
+                const dist = Math.hypot(player.x - obj.x, player.y - obj.y);
+                if (dist < INTERACTION_RADIUS) { foundZone = obj; break; }
+            }
+            if (foundZone && activeZoneKey !== foundZone.key) {
+                showPopup(foundZone);
+                activeZoneKey = foundZone.key;
+            } else if (!foundZone) {
+                activeZoneKey = null; // zone 밖으로 나가면 재트리거 가능
+            }
+        }
+
+        // 게임 로직 업데이트
+        function update() {
+            frameCount++;
+
+            // 팝업 떠 있는 동안 게임 일시정지 (이동/봇/큐브 모두 멈춤)
+            if (popupOpen) return;
+            // 편집 모드: 게임 로직 전체 일시정지. 카메라는 마우스 패닝/화살표로 자유 이동
+            if (editMode) return;
+            // 미니게임 활성 중에도 일시정지
+            if (miniGameActive) return;
+
+            // --- 플레이어 이동 로직 ---
+            let dx = 0;
+            let dy = 0;
+
+            if (keys['ArrowUp'] || keys['KeyW']) dy -= player.speed;
+            if (keys['ArrowDown'] || keys['KeyS']) dy += player.speed;
+            if (keys['ArrowLeft'] || keys['KeyA']) dx -= player.speed;
+            if (keys['ArrowRight'] || keys['KeyD']) dx += player.speed;
+
+            if (dx !== 0 && dy !== 0) {
+                const length = Math.sqrt(dx * dx + dy * dy);
+                dx = (dx / length) * player.speed;
+                dy = (dy / length) * player.speed;
+            }
+
+            const oldPx = player.x, oldPy = player.y;
+            if (dx !== 0 && !checkCollision(player.x + dx, player.y, player.size)) player.x += dx;
+            if (dy !== 0 && !checkCollision(player.x, player.y + dy, player.size)) player.y += dy;
+            // 터치 조이스틱
+            const tdx = touchInput.dx * player.speed;
+            const tdy = touchInput.dy * player.speed;
+            if (Math.abs(tdx) > 0.01 && !checkCollision(player.x + tdx, player.y, player.size)) player.x += tdx;
+            if (Math.abs(tdy) > 0.01 && !checkCollision(player.x, player.y + tdy, player.size)) player.y += tdy;
+            player.isMoving = (player.x !== oldPx || player.y !== oldPy);
+
+            // --- 봇 이동 + 말풍선 상태 머신 ---
+            // moving: 근처 무작위 target 향해 이동
+            // talking: 위치 고정 + 3초 동안 외계어 말풍선
+            // 전환: target 도달 시 50% talking, 50% 새 target. 이동 중 매우 낮은 확률(약 20초마다)로 갑자기 talking.
+            bots.forEach(bot => {
+                const oldBx = bot.x, oldBy = bot.y;
+
+                // talking 상태 처리 (멈춤 + 말풍선)
+                if (bot.state === 'talking') {
+                    if (Date.now() > bot.talkUntil) {
+                        bot.state = 'moving';
+                        bot.talkText = null;
+                        pickNewTarget(bot);
+                    }
+                    bot.isMoving = false;
+                    return;
+                }
+
+                // moving 상태에서 매우 낮은 확률로 갑자기 talking (간헐적 멈춤)
+                if (Math.random() < 0.0008) {
+                    startTalking(bot);
+                    return;
+                }
+
+                let botDx = bot.targetX - bot.x;
+                let botDy = bot.targetY - bot.y;
+                let dist = Math.sqrt(botDx*botDx + botDy*botDy);
+
+                if (dist < 10) {
+                    // target 도달: 50% 확률로 talking, 50% 즉시 새 target (불규칙)
+                    if (Math.random() < 0.5) {
+                        startTalking(bot);
+                    } else {
+                        pickNewTarget(bot);
+                    }
+                } else {
+                    let moveX = (botDx / dist) * bot.speed;
+                    let moveY = (botDy / dist) * bot.speed;
+                    if (!checkCollision(bot.x + moveX, bot.y + moveY, bot.size)) {
+                        bot.x += moveX;
+                        bot.y += moveY;
+                    } else {
+                        pickNewTarget(bot);
+                    }
+                }
+                bot.isMoving = (bot.x !== oldBx || bot.y !== oldBy);
+            });
+
+            // 큐브 획득 판정
+            for (let i = cubes.length - 1; i >= 0; i--) {
+                const cube = cubes[i];
+                const dist = Math.hypot(player.x - cube.x, player.y - cube.y);
+                
+                if (dist < player.size + cube.size + 10) {
+                    cubes.splice(i, 1);
+                    score += 100;
+                    document.getElementById('score-display').innerText = score.toLocaleString();
+                    spawnCube(); 
+                    spawnCube(); 
+                }
+            }
+
+            // 카메라 추적 (줌 반영: 줌아웃하면 viewport가 커져 카메라 중심도 그만큼 넓게 잡힘)
+            // 편집 모드일 때는 줌 1로 고정 (편집 모드에서는 zoomLevel 무시)
+            const z = editMode ? 1 : zoomLevel;
+            const viewW = canvas.width * z;
+            const viewH = canvas.height * z;
+            camera.x = player.x - viewW / 2;
+            camera.y = player.y - viewH / 2;
+            camera.x = Math.max(0, Math.min(camera.x, WORLD_SIZE - viewW));
+            camera.y = Math.max(0, Math.min(camera.y, WORLD_SIZE - viewH));
+
+            // 1~9 메인 오브젝트 진입 검사
+            checkInteractionZones();
+            // 미니게임존 진입 검사
+            checkMiniGameZone();
+        }
+
+        // 오브젝트(건물/소품) 그리는 함수 — (x, y)는 발(footer) 위치
+        // 그림자 없음. 이미지 하단이 (x, y) = 바닥에 바로 닿음.
+        // obj.scale (0.3~3.0, 기본 1.0) 적용 — 발 위치 고정, 위쪽으로만 늘어남
+        function drawObject(obj) {
+            const def = objectDefs[obj.key];
+            if (!def.img.complete || !def.img.naturalWidth) return;
+            const s = obj.scale || 1;
+            const w = def.w * s;
+            const h = def.h * s;
+            ctx.drawImage(def.img, obj.x - w/2, obj.y - h, w, h);
+        }
+
+        // === 봇 행동 헬퍼 ===
+        // 외계어 생성: 자음 클러스터 위주 음절 풀 → 1~2 단어 × 1~2 음절 + 가끔 구두점
+        const ALIEN_SYLLABLES = ['zk','fnq','blg','rnp','shtn','klop','vrk','mzul','thrak','qpl','wrr','zix','glor','kvar','nyx','plox','brzz','krn','mrk','gth','lor','klar','mool','ree','oo','aii'];
+        const ALIEN_PUNCT = ['!','?','...','*','#'];
+        function generateAlienText() {
+            const wordCount = 1 + Math.floor(Math.random() * 2);
+            const words = [];
+            for (let i = 0; i < wordCount; i++) {
+                let w = '';
+                const sylCount = 1 + Math.floor(Math.random() * 2);
+                for (let j = 0; j < sylCount; j++) {
+                    w += ALIEN_SYLLABLES[Math.floor(Math.random() * ALIEN_SYLLABLES.length)];
+                }
+                words.push(w);
+            }
+            return words.join(' ') + (Math.random() < 0.5 ? ALIEN_PUNCT[Math.floor(Math.random() * ALIEN_PUNCT.length)] : '');
+        }
+
+        // 봇 현재 위치 기준 반경 200~600px 무작위 방향으로 새 target 설정 (불규칙 wandering)
+        function pickNewTarget(bot) {
+            const r = 200 + Math.random() * 400;
+            const a = Math.random() * Math.PI * 2;
+            bot.targetX = Math.max(50, Math.min(WORLD_SIZE - 50, bot.x + Math.cos(a) * r));
+            bot.targetY = Math.max(50, Math.min(WORLD_SIZE - 50, bot.y + Math.sin(a) * r));
+        }
+
+        function startTalking(bot) {
+            bot.state = 'talking';
+            bot.talkUntil = Date.now() + 3000; // 3초
+            bot.talkText = generateAlienText();
+        }
+
+        // 말풍선 그리기 (캐릭터 머리 위)
+        function drawSpeechBubble(x, topY, text) {
+            ctx.font = 'bold 14px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            const padding = 10;
+            const w = Math.max(40, ctx.measureText(text).width + padding * 2);
+            const h = 24;
+            const bx = x - w / 2;
+            const by = topY - h;
+            const r = 8;
+            // 둥근 사각형
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(bx + r, by);
+            ctx.arcTo(bx + w, by, bx + w, by + h, r);
+            ctx.arcTo(bx + w, by + h, bx, by + h, r);
+            ctx.arcTo(bx, by + h, bx, by, r);
+            ctx.arcTo(bx, by, bx + w, by, r);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            // 꼬리 삼각형 (캐릭터 쪽 향함)
+            ctx.beginPath();
+            ctx.moveTo(x - 5, by + h - 0.5);
+            ctx.lineTo(x, by + h + 6);
+            ctx.lineTo(x + 5, by + h - 0.5);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
+            ctx.fill();
+            // 꼬리 외곽선 (양옆만, 위쪽은 사각형 경계와 합쳐지게)
+            ctx.beginPath();
+            ctx.moveTo(x - 5, by + h);
+            ctx.lineTo(x, by + h + 6);
+            ctx.lineTo(x + 5, by + h);
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            // 텍스트
+            ctx.fillStyle = '#1e293b';
+            ctx.fillText(text, x, by + h / 2);
+        }
+
+        // 큐브 그리는 함수 (z-sort에 포함시키기 위해 분리)
+        function drawCube(cube) {
+            const bob = Math.sin((frameCount * 0.05) + cube.bobOffset) * 5;
+            ctx.save();
+            ctx.translate(cube.x, cube.y + bob);
+            ctx.rotate(frameCount * 0.02 + cube.bobOffset);
+            ctx.fillStyle = cube.color;
+            ctx.shadowColor = cube.color;
+            ctx.shadowBlur = 15;
+            ctx.fillRect(-cube.size/2, -cube.size/2, cube.size, cube.size);
+            ctx.restore();
+        }
+
+        // 아바타 그리는 공통 함수 (플레이어 및 봇 재사용)
+        function drawAvatar(entity, isPlayer = false) {
+            const { x, y, size, color, name, img, isMoving, bobPhase = 0 } = entity;
+            const drawSize = size * 2 * 4; // 원래 원 직경(size*2) 대비 4배 → 120px
+
+            // === B: 걷는 모션 (squash & stretch) ===
+            //   1) bobbing 진폭 절반 (이전 ±6 → ±3) : 미세한 발 디딤
+            //   2) scaleY squash : sin이 음수일 때(발이 땅에 닿는 순간) 캐릭터를 살짝 눌러서
+            //      "체중이 실리는" 시각 단서 제공. 발 위치(y+15)는 고정 — 머리 위로만 짧아짐
+            const phase = frameCount * 0.35 + bobPhase;
+            const sinV = Math.sin(phase);
+            const bobOffset = isMoving ? sinV * 3 : 0;
+            const sy = isMoving ? (1 - Math.max(0, -sinV) * 0.06) : 1; // 1.0 ~ 0.94
+            const drawH = drawSize * sy;
+
+            // 그림자 (50% 축소: 가로 18 / 세로 8.25 — 캐릭터 발 폭과 유사한 단정한 크기)
+            // 봇은 그림자를 발에 더 가깝게 (y+8) → 공중에 떠 보이는 효과 감소. 플레이어는 기존 y+15 유지.
+            const shadowYOffset = isPlayer ? 15 : 8;
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            ctx.beginPath();
+            ctx.ellipse(x, y + shadowYOffset, size * 1.2, size * 0.55, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 캐릭터: 이미지 로드 완료 시 PNG, 미완료/실패 시 fallback 원형
+            const imgReady = img && img.complete && img.naturalWidth > 0;
+            if (imgReady) {
+                // 발이 y+15 고정 + bobOffset, 높이는 squash로 짧아짐 (머리 위로만 줄어듦)
+                ctx.drawImage(img, x - drawSize/2, y + 15 - drawH + bobOffset, drawSize, drawH);
+            } else {
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(x, y + bobOffset, size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = isPlayer ? '#fff' : 'rgba(255,255,255,0.5)';
+                ctx.lineWidth = isPlayer ? 2 : 1;
+                ctx.stroke();
+            }
+
+            // 이름표 (캐릭터 머리 위, squash + bobOffset 따라감)
+            ctx.fillStyle = isPlayer ? '#38bdf8' : '#94a3b8';
+            ctx.font = isPlayer ? 'bold 12px sans-serif' : '11px sans-serif';
+            ctx.textAlign = 'center';
+            const labelY = imgReady ? (y + 15 - drawH - 5 + bobOffset) : (y - 20 + bobOffset);
+            ctx.fillText(name, x, labelY);
+
+            // 말풍선 (봇이 talking 상태일 때만, 이름표 위쪽으로)
+            if (!isPlayer && entity.state === 'talking' && entity.talkText) {
+                drawSpeechBubble(x, labelY - 14, entity.talkText);
+            }
+        }
+
+        // 화면 그리기
+        function draw() {
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            // 줌 적용: 일반 모드만. 편집 모드는 1배 (마우스 픽킹 좌표 호환).
+            const z = editMode ? 1 : zoomLevel;
+            ctx.scale(1 / z, 1 / z);
+            ctx.translate(-camera.x, -camera.y);
+
+            // 배경 맵 이미지 (로드 완료 시) 또는 fallback 다크
+            // 채도·밝기 다운으로 오브젝트(voxel)·캐릭터(cel-shaded)와 톤 매칭 향상
+            if (bgImg.complete && bgImg.naturalWidth > 0) {
+                ctx.filter = 'saturate(0.6) brightness(0.92)';
+                ctx.drawImage(bgImg, 0, 0, WORLD_SIZE, WORLD_SIZE);
+                ctx.filter = 'none';
+            } else {
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+            }
+
+            // 건물 시각 박스는 배경 이미지에 이미 그려져 있으므로 제거.
+            // buildings[] 데이터는 충돌 판정용으로만 유지 (checkCollision, 큐브 스폰 회피).
+
+            // === 미니게임존 시각화 (펄스 글로우 + 텍스트) ===
+            {
+                const z = MINI_GAME_ZONE;
+                const pulse = (Math.sin(frameCount * 0.05) + 1) * 0.5; // 0~1
+                // 글로우 채움
+                ctx.fillStyle = `rgba(56, 189, 248, ${0.08 + pulse * 0.10})`;
+                ctx.beginPath();
+                ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2);
+                ctx.fill();
+                // 점선 외곽
+                ctx.strokeStyle = `rgba(56, 189, 248, ${0.45 + pulse * 0.35})`;
+                ctx.lineWidth = 5;
+                ctx.setLineDash([14, 10]);
+                ctx.lineDashOffset = -frameCount * 0.5;
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.lineDashOffset = 0;
+                // 텍스트 (임시 — 추후 5×7 비트맵 도트 폰트로 교체 예정)
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.fillRect(z.x - 170, z.y - 28, 340, 56);
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(z.x - 170, z.y - 28, 340, 56);
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = 'bold 28px monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('MINI GAME ZONE', z.x, z.y - 5);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.font = '12px sans-serif';
+                ctx.fillText('걸어 들어가면 자동 시작', z.x, z.y + 17);
+            }
+
+            // === y-sort 드로어블: 오브젝트 + 큐브 + 봇 + 플레이어를 y 좌표 기준으로 정렬 후 그리기 ===
+            // 화면 아래쪽(y가 큰)일수록 앞에 그려져서 자연스러운 톱뷰 깊이감 형성.
+            // 단, 캐릭터(봇 + 플레이어)는 Z_CHARACTER 오프셋으로 항상 모든 오브젝트 위 (사용자 요청).
+            // 캐릭터끼리는 기존 y-sort 유지 (서로 자연스러운 앞/뒤).
+            const Z_CHARACTER = 10000000;
+            const drawables = [];
+            for (const obj of objects)  drawables.push({ type: 'obj',    sortY: obj.y,                       data: obj });
+            for (const cube of cubes)   drawables.push({ type: 'cube',   sortY: cube.y,                      data: cube });
+            for (const bot of bots)     drawables.push({ type: 'bot',    sortY: Z_CHARACTER + bot.y + 15,    data: bot });
+            drawables.push({                         type: 'player', sortY: Z_CHARACTER + player.y + 15, data: player });
+            drawables.sort((a, b) => a.sortY - b.sortY);
+
+            for (const d of drawables) {
+                if (d.type === 'obj')         drawObject(d.data);
+                else if (d.type === 'cube')   drawCube(d.data);
+                else if (d.type === 'bot')    drawAvatar(d.data);
+                else if (d.type === 'player') drawAvatar(d.data, true);
+            }
+            ctx.shadowBlur = 0; // 큐브 글로우 잔여 초기화
+
+            // 편집 모드: 모든 충돌 박스 시각화 (디버그 — 빨간 점선)
+            // 사용자가 박스 위치/크기를 즉시 확인 가능. PNG와 박스 정합 점검용.
+            if (editMode) {
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]);
+                for (const b of buildings) {
+                    ctx.strokeRect(b.x, b.y, b.w, b.h);
+                }
+                ctx.setLineDash([]);
+                // 박스 그리기 프리뷰 (드래그 중 녹색 점선)
+                if (isDrawingBox && drawBoxStart && drawBoxCurrent) {
+                    const x = Math.min(drawBoxStart.x, drawBoxCurrent.x);
+                    const y = Math.min(drawBoxStart.y, drawBoxCurrent.y);
+                    const w = Math.abs(drawBoxCurrent.x - drawBoxStart.x);
+                    const h = Math.abs(drawBoxCurrent.y - drawBoxStart.y);
+                    ctx.fillStyle = 'rgba(16, 185, 129, 0.18)';
+                    ctx.fillRect(x, y, w, h);
+                    ctx.strokeStyle = '#10b981';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([8, 6]);
+                    ctx.strokeRect(x, y, w, h);
+                    ctx.setLineDash([]);
+                }
+            }
+
+            // 편집 모드: 선택 오브젝트 외곽선 + 발 위치 마커 (scale 반영)
+            if (editMode && selectedIndex >= 0 && objects[selectedIndex]) {
+                const obj = objects[selectedIndex];
+                const def = objectDefs[obj.key];
+                const s = obj.scale || 1;
+                const w = def.w * s;
+                const h = def.h * s;
+                const x0 = obj.x - w / 2;
+                const y0 = obj.y - h;
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([10, 6]);
+                ctx.strokeRect(x0, y0, w, h);
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(obj.x, obj.y, 9, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            ctx.restore();
+        }
+
+        // ============================================================
+        // === 편집 모드 (E 키 토글) — 오브젝트 위치 조정 도구 ===
+        // ============================================================
+        let editMode = false;
+        let selectedIndex = -1;
+        let isDragging = false;
+        let dragOffsetX = 0, dragOffsetY = 0;
+        let panActive = false;
+        let panStart = null;
+        let saveTimer = null; // localStorage debounce 타이머
+
+        // === 박스 그리기 모드 (충돌 영역 직접 그리기) ===
+        let boxDrawMode = false;
+        let isDrawingBox = false;
+        let drawBoxStart = null;
+        let drawBoxCurrent = null;
+
+        // === localStorage 저장 / 리셋 ===
+        function saveObjects() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    version: 1,
+                    savedAt: new Date().toISOString(),
+                    objects: objects.map(o => {
+                        const out = { key: o.key, x: Math.round(o.x), y: Math.round(o.y) };
+                        // scale, collideRadius는 default가 아닐 때만 저장 (용량 절약)
+                        if (o.scale && o.scale !== 1) out.scale = Math.round(o.scale * 100) / 100;
+                        if (o.collideRadius !== undefined && o.collideRadius !== COLLIDE_RADIUS) out.collideRadius = o.collideRadius;
+                        return out;
+                    })
+                }));
+                updateSaveTime();
+            } catch (e) {
+                console.warn('[Storage] 저장 실패:', e.message);
+            }
+        }
+        // 변경 발생 시 호출. 즉시 충돌 박스 동기화 + 500ms 후 localStorage 저장 (debounce)
+        function markDirty() {
+            // 충돌 박스를 즉시 새 위치로 재계산 → 편집 종료 안 해도 즉시 충돌 반영
+            rebuildBuildings();
+            if (saveTimer) clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => {
+                saveObjects();
+                saveTimer = null;
+            }, 500);
+        }
+        function updateSaveTime() {
+            const el = document.getElementById('save-time');
+            if (!el) return;
+            const n = new Date();
+            const pad = v => v.toString().padStart(2, '0');
+            el.innerText = `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())} ✓`;
+        }
+        // R 키: 기본 위치로 리셋
+        function resetObjectsToDefault() {
+            if (!confirm('오브젝트를 기본 위치로 리셋하시겠습니까?\n현재 옮긴 위치/삭제 내역이 모두 사라집니다.')) return;
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+            objects.length = 0;
+            for (const o of DEFAULT_OBJECTS) objects.push({ ...o });
+            selectedIndex = -1;
+            rebuildBuildings();
+            updateEditHUD();
+            const el = document.getElementById('save-time');
+            if (el) el.innerText = '기본 위치로 리셋됨';
+            console.log('[Storage] 기본 위치로 리셋 완료');
+        }
+
+        const editHud     = document.getElementById('edit-mode-hud');
+        const editSelDom  = document.getElementById('edit-selected');
+        const editKeyEl   = document.getElementById('edit-key');
+        const editXEl     = document.getElementById('edit-x');
+        const editYEl     = document.getElementById('edit-y');
+        const editScaleEl = document.getElementById('edit-scale');
+        const editCollideEl = document.getElementById('edit-collide');
+        const editMouseEl = document.getElementById('edit-mouse');
+
+        function screenToWorld(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (clientX - rect.left) + camera.x,
+                y: (clientY - rect.top)  + camera.y
+            };
+        }
+
+        // y-sort 역순(앞쪽 우선) 사각 box 검사 — scale 반영
+        function pickObjectAt(wx, wy) {
+            const sorted = objects.map((o, i) => ({ o, i }))
+                .sort((a, b) => b.o.y - a.o.y);
+            for (const { o, i } of sorted) {
+                const def = objectDefs[o.key];
+                const s = o.scale || 1;
+                const w = def.w * s;
+                const h = def.h * s;
+                const x0 = o.x - w / 2;
+                const y0 = o.y - h;
+                if (wx >= x0 && wx < x0 + w && wy >= y0 && wy < y0 + h) return i;
+            }
+            return -1;
+        }
+
+        function updateEditHUD() {
+            if (selectedIndex >= 0 && objects[selectedIndex]) {
+                const obj = objects[selectedIndex];
+                editSelDom.style.display = 'block';
+                editKeyEl.innerText = obj.key;
+                editXEl.innerText = Math.round(obj.x);
+                editYEl.innerText = Math.round(obj.y);
+                if (editScaleEl) editScaleEl.innerText = Math.round((obj.scale || 1) * 100) + '%';
+                if (editCollideEl) editCollideEl.innerText = (obj.collideRadius ?? COLLIDE_RADIUS);
+            } else {
+                editSelDom.style.display = 'none';
+            }
+        }
+
+        // 편집 종료 + markDirty 시 충돌 박스 재계산
+        // COLLISION_AUTO_GENERATE=false면 자동 생성 스킵, MANUAL_COLLISION_BOXES만 적용
+        function rebuildBuildings() {
+            buildings.length = 0;
+            if (COLLISION_AUTO_GENERATE) {
+                for (const obj of objects) {
+                    const def = objectDefs[obj.key];
+                    if (def.noCollide) continue;
+                    const r = obj.collideRadius ?? COLLIDE_RADIUS;
+                    if (r <= 0) continue;
+                    buildings.push({
+                        x: obj.x - r,
+                        y: obj.y - r,
+                        w: r * 2,
+                        h: r * 2,
+                        label: obj.key
+                    });
+                }
+            }
+            for (const b of MANUAL_COLLISION_BOXES) {
+                buildings.push({ ...b });
+            }
+        }
+
+        function toggleEditMode() {
+            editMode = !editMode;
+            editHud.style.display = editMode ? 'block' : 'none';
+            // 편집 모드 진입 시 우상단 회사 보드 숨김 (편집 HUD와 우상단에서 겹침). 종료 시 복원.
+            const companyBoard = document.getElementById('company-board');
+            if (companyBoard) companyBoard.style.display = editMode ? 'none' : '';
+            if (!editMode) {
+                selectedIndex = -1;
+                isDragging = false;
+                panActive = false;
+                panStart = null;
+                canvas.style.cursor = 'default';
+                // 잔여 키 누름 클리어 (편집 중 눌렀던 키로 캐릭터가 갑자기 이동하는 것 방지)
+                for (const k in keys) delete keys[k];
+                // 충돌 박스 재계산 (이동/삭제된 오브젝트 반영)
+                rebuildBuildings();
+                // 진입 zone 재초기화 (현 위치 기준 즉시 팝업 방지)
+                activeZoneKey = null;
+                for (const obj of objects) {
+                    const def = objectDefs[obj.key];
+                    if (!def.interaction) continue;
+                    if (Math.hypot(player.x - obj.x, player.y - obj.y) < INTERACTION_RADIUS) {
+                        activeZoneKey = obj.key;
+                        break;
+                    }
+                }
+            } else {
+                canvas.style.cursor = 'crosshair';
+                // 편집 진입 시 카메라를 플레이어 중심으로 즉시 정렬 (편집 시작 = 캐릭터 위치).
+                // 그 후엔 update가 멈추므로 우클릭 드래그/방향키로 자유 패닝 가능.
+                camera.x = player.x - canvas.width / 2;
+                camera.y = player.y - canvas.height / 2;
+                camera.x = Math.max(0, Math.min(camera.x, WORLD_SIZE - canvas.width));
+                camera.y = Math.max(0, Math.min(camera.y, WORLD_SIZE - canvas.height));
+            }
+            updateEditHUD();
+        }
+
+        function exportObjects() {
+            const lines = objects.map(o => {
+                const fields = [`key: '${o.key}'`, `x: ${Math.round(o.x)}`, `y: ${Math.round(o.y)}`];
+                if (o.scale && o.scale !== 1) fields.push(`scale: ${Math.round(o.scale * 100) / 100}`);
+                if (o.collideRadius !== undefined && o.collideRadius !== COLLIDE_RADIUS) fields.push(`collideRadius: ${o.collideRadius}`);
+                return `    { ${fields.join(', ')} },`;
+            });
+            // 코드에 그대로 붙여넣을 수 있게 DEFAULT_OBJECTS 변수명 사용 + scale 포함
+            const code = `const DEFAULT_OBJECTS = [\n${lines.join('\n')}\n];`;
+            console.log('=== DEFAULT_OBJECTS (코드의 같은 변수 자리에 그대로 붙여넣기) ===');
+            console.log(code);
+            // 수동 충돌 박스도 같이 export (자동 추정 박스는 코드에서 다시 생성되므로 사용자 추가분만)
+            const customBoxes = MANUAL_COLLISION_BOXES.filter(b => !b.label || !b.label.endsWith('-auto'));
+            if (customBoxes.length > 0) {
+                const boxLines = customBoxes.map(b =>
+                    `    { x: ${Math.round(b.x)}, y: ${Math.round(b.y)}, w: ${Math.round(b.w)}, h: ${Math.round(b.h)}, label: '${b.label || 'custom'}' },`
+                );
+                const boxCode = `const MANUAL_COLLISION_BOXES = [\n${boxLines.join('\n')}\n];`;
+                console.log('=== MANUAL_COLLISION_BOXES (수동 추가분만, 코드의 같은 변수 자리에 빈 배열 대신 박기) ===');
+                console.log(boxCode);
+            }
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(code).then(
+                    () => console.log('[✓ DEFAULT_OBJECTS 클립보드 복사됨 → Cmd/Ctrl+V로 붙여넣기. 수동 박스는 콘솔에서 별도 복사]'),
+                    () => console.log('[✗ 클립보드 실패 — 콘솔에서 직접 복사하세요]')
+                );
+            } else {
+                console.log('[i] clipboard API 사용 불가 — 콘솔에서 직접 복사하세요');
+            }
+        }
+
+        // === 키 이벤트 ===
+        window.addEventListener('keydown', (e) => {
+            if (popupOpen) return; // 팝업 떠 있을 때는 ESC만(다른 핸들러) 작동
+
+            // E 키: 편집 모드 토글 (한글 IME 안전을 위해 e.code 사용)
+            if (e.code === 'KeyE') {
+                toggleEditMode();
+                e.preventDefault();
+                return;
+            }
+            if (!editMode) return;
+
+            // S 키: objects[] 출력
+            if (e.code === 'KeyS') {
+                exportObjects();
+                e.preventDefault();
+                return;
+            }
+            // R 키: 기본 위치 리셋
+            if (e.code === 'KeyR') {
+                resetObjectsToDefault();
+                e.preventDefault();
+                return;
+            }
+            // B 키: 박스 그리기 모드 토글 (충돌 영역 직접 그리기)
+            if (e.code === 'KeyB') {
+                boxDrawMode = !boxDrawMode;
+                isDrawingBox = false;
+                drawBoxStart = null;
+                drawBoxCurrent = null;
+                canvas.style.cursor = boxDrawMode ? 'cell' : 'crosshair';
+                console.log(`[Box] 그리기 모드: ${boxDrawMode ? 'ON' : 'OFF'}`);
+                e.preventDefault();
+                return;
+            }
+            // X 키: 가장 최근 추가된 수동 박스 제거 (실수 되돌리기)
+            if (e.code === 'KeyX' && boxDrawMode) {
+                if (MANUAL_COLLISION_BOXES.length > 0) {
+                    const removed = MANUAL_COLLISION_BOXES.pop();
+                    console.log(`[Box] 제거됨: ${removed.label}`);
+                    rebuildBuildings();
+                    markDirty();
+                }
+                e.preventDefault();
+                return;
+            }
+            // , / . : 선택 오브젝트 충돌 반경 조정 (Shift = 큰 단계)
+            if (e.code === 'Comma' || e.code === 'Period') {
+                if (selectedIndex >= 0) {
+                    const step = e.shiftKey ? 20 : 5;
+                    const delta = e.code === 'Comma' ? -step : step;
+                    const obj = objects[selectedIndex];
+                    const cur = obj.collideRadius ?? COLLIDE_RADIUS;
+                    obj.collideRadius = Math.max(0, Math.min(200, cur + delta));
+                    markDirty();
+                    updateEditHUD();
+                }
+                e.preventDefault();
+                return;
+            }
+            // [ / ] : 선택 오브젝트 크기 조정 (Shift = 큰 단계)
+            if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
+                if (selectedIndex >= 0) {
+                    const step = e.shiftKey ? 0.25 : 0.05;
+                    const delta = e.code === 'BracketLeft' ? -step : step;
+                    const obj = objects[selectedIndex];
+                    obj.scale = Math.max(0.3, Math.min(3.0, (obj.scale || 1) + delta));
+                    obj.scale = Math.round(obj.scale * 100) / 100;
+                    markDirty();
+                    updateEditHUD();
+                }
+                e.preventDefault();
+                return;
+            }
+            // Delete/Backspace: 선택 오브젝트 제거
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (selectedIndex >= 0) {
+                    const removed = objects.splice(selectedIndex, 1)[0];
+                    console.log(`[EDIT] Removed: ${removed.key} (${removed.x}, ${removed.y})`);
+                    selectedIndex = -1;
+                    updateEditHUD();
+                    markDirty();
+                }
+                e.preventDefault();
+                return;
+            }
+            // 방향키: 선택 있으면 미세 조정, 없으면 카메라 이동
+            if (/^Arrow/.test(e.key)) {
+                const step = e.shiftKey ? 10 : 1;
+                if (selectedIndex >= 0) {
+                    const obj = objects[selectedIndex];
+                    if (e.key === 'ArrowLeft')  obj.x -= step;
+                    if (e.key === 'ArrowRight') obj.x += step;
+                    if (e.key === 'ArrowUp')    obj.y -= step;
+                    if (e.key === 'ArrowDown')  obj.y += step;
+                    updateEditHUD();
+                    markDirty();
+                } else {
+                    const camStep = e.shiftKey ? 100 : 30;
+                    if (e.key === 'ArrowLeft')  camera.x -= camStep;
+                    if (e.key === 'ArrowRight') camera.x += camStep;
+                    if (e.key === 'ArrowUp')    camera.y -= camStep;
+                    if (e.key === 'ArrowDown')  camera.y += camStep;
+                }
+                e.preventDefault();
+            }
+        });
+
+        // === 마우스 이벤트 ===
+        canvas.addEventListener('contextmenu', (e) => {
+            if (editMode) e.preventDefault(); // 편집 모드에서 우클릭 = 카메라 패닝
+        });
+        canvas.addEventListener('mousedown', (e) => {
+            if (!editMode) return;
+            // 우클릭: 카메라 패닝 시작
+            if (e.button === 2) {
+                panActive = true;
+                panStart = { mouseX: e.clientX, mouseY: e.clientY, camX: camera.x, camY: camera.y };
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+            if (e.button !== 0) return;
+            const { x: wx, y: wy } = screenToWorld(e.clientX, e.clientY);
+            // 박스 그리기 모드: 좌클릭+드래그로 새 충돌 박스 시작
+            if (boxDrawMode) {
+                isDrawingBox = true;
+                drawBoxStart = { x: wx, y: wy };
+                drawBoxCurrent = { x: wx, y: wy };
+                return;
+            }
+            // 일반 좌클릭: 오브젝트 선택 / 드래그 시작
+            const idx = pickObjectAt(wx, wy);
+            if (idx >= 0) {
+                selectedIndex = idx;
+                isDragging = true;
+                dragOffsetX = wx - objects[idx].x;
+                dragOffsetY = wy - objects[idx].y;
+                canvas.style.cursor = 'grabbing';
+            } else {
+                selectedIndex = -1;
+            }
+            updateEditHUD();
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            // 카메라 패닝 (우클릭 드래그)
+            if (panActive && panStart) {
+                camera.x = panStart.camX - (e.clientX - panStart.mouseX);
+                camera.y = panStart.camY - (e.clientY - panStart.mouseY);
+                return;
+            }
+            if (!editMode) return;
+            const { x: wx, y: wy } = screenToWorld(e.clientX, e.clientY);
+            // 박스 그리기 중: 현재 마우스 위치 업데이트 (프리뷰)
+            if (isDrawingBox) {
+                drawBoxCurrent = { x: wx, y: wy };
+            } else if (isDragging && selectedIndex >= 0) {
+                objects[selectedIndex].x = Math.round(wx - dragOffsetX);
+                objects[selectedIndex].y = Math.round(wy - dragOffsetY);
+                updateEditHUD();
+            } else if (boxDrawMode) {
+                canvas.style.cursor = 'cell';
+            } else {
+                // 호버 cursor 피드백
+                const hoverIdx = pickObjectAt(wx, wy);
+                canvas.style.cursor = hoverIdx >= 0 ? 'grab' : 'crosshair';
+            }
+            if (editMouseEl) editMouseEl.innerText = `${Math.round(wx)}, ${Math.round(wy)}`;
+        });
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 2 && panActive) {
+                panActive = false;
+                panStart = null;
+                canvas.style.cursor = editMode ? 'crosshair' : 'default';
+            }
+            if (e.button === 0) {
+                // 박스 그리기 종료
+                if (isDrawingBox && drawBoxStart && drawBoxCurrent) {
+                    const x = Math.min(drawBoxStart.x, drawBoxCurrent.x);
+                    const y = Math.min(drawBoxStart.y, drawBoxCurrent.y);
+                    const w = Math.abs(drawBoxCurrent.x - drawBoxStart.x);
+                    const h = Math.abs(drawBoxCurrent.y - drawBoxStart.y);
+                    if (w > 10 && h > 10) {
+                        MANUAL_COLLISION_BOXES.push({
+                            x: Math.round(x), y: Math.round(y),
+                            w: Math.round(w), h: Math.round(h),
+                            label: 'custom-' + Date.now().toString().slice(-5)
+                        });
+                        rebuildBuildings();
+                        markDirty();
+                        console.log(`[Box] 추가됨: (${Math.round(x)}, ${Math.round(y)}, ${Math.round(w)}, ${Math.round(h)})`);
+                    }
+                    isDrawingBox = false;
+                    drawBoxStart = null;
+                    drawBoxCurrent = null;
+                    canvas.style.cursor = boxDrawMode ? 'cell' : 'crosshair';
+                    return;
+                }
+                const wasDragging = isDragging;
+                isDragging = false;
+                if (editMode) {
+                    canvas.style.cursor = boxDrawMode ? 'cell' : 'crosshair';
+                    if (wasDragging) markDirty(); // 드래그로 위치 변경 → 저장 예약
+                }
+            }
+        });
+
+        // 마우스 휠:
+        //   - 편집 모드 + 선택 시 → 선택 오브젝트 크기 조정 (scale)
+        //   - 일반 모드 → 화면 줌 (1.0 ↔ 1.5)
+        canvas.addEventListener('wheel', (e) => {
+            if (editMode) {
+                if (selectedIndex < 0) return;
+                e.preventDefault();
+                const obj = objects[selectedIndex];
+                const step = e.shiftKey ? 0.15 : 0.05;
+                const delta = e.deltaY > 0 ? -step : step;
+                obj.scale = Math.max(0.3, Math.min(3.0, (obj.scale || 1) + delta));
+                obj.scale = Math.round(obj.scale * 100) / 100;
+                markDirty();
+                updateEditHUD();
+            } else {
+                // 일반 모드: 줌 (1.0 ~ 1.2)
+                e.preventDefault();
+                const step = 0.05;
+                // 휠 위(deltaY<0) → 줌인 (1.0 쪽), 아래 → 줌아웃 (1.2 쪽)
+                zoomLevel = Math.max(1.0, Math.min(1.2, zoomLevel + (e.deltaY > 0 ? step : -step)));
+                zoomLevel = Math.round(zoomLevel * 100) / 100;
+                saveZoom();
+            }
+        }, { passive: false });
+
+        // ============================================================
+        // === 터치 조이스틱 설정 ===
+        // ============================================================
+        (function setupJoystick() {
+            const zone  = document.getElementById('joystick-zone');
+            const base  = document.getElementById('joystick-base');
+            const thumb = document.getElementById('joystick-thumb');
+
+            // 터치 지원 디바이스에서만 표시
+            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+                zone.style.display = 'block';
+            }
+
+            const MAX_OFFSET = 36; // 썸 최대 이동 반경(px)
+            let activeTouchId = null;
+            let centerX = 0, centerY = 0;
+
+            function getCenter() {
+                const r = base.getBoundingClientRect();
+                return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+            }
+
+            function moveThumb(clientX, clientY) {
+                const dx   = clientX - centerX;
+                const dy   = clientY - centerY;
+                const dist = Math.hypot(dx, dy);
+                const clamped = Math.min(dist, MAX_OFFSET);
+                const angle   = Math.atan2(dy, dx);
+                const tx = Math.cos(angle) * clamped;
+                const ty = Math.sin(angle) * clamped;
+                thumb.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
+                const ratio = clamped / MAX_OFFSET;
+                touchInput.dx = Math.cos(angle) * ratio;
+                touchInput.dy = Math.sin(angle) * ratio;
+            }
+
+            function resetThumb() {
+                activeTouchId = null;
+                touchInput.dx = 0;
+                touchInput.dy = 0;
+                thumb.style.transform = 'translate(-50%, -50%)';
+            }
+
+            zone.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (activeTouchId !== null) return;
+                const t = e.changedTouches[0];
+                activeTouchId = t.identifier;
+                const c = getCenter();
+                centerX = c.x; centerY = c.y;
+                moveThumb(t.clientX, t.clientY);
+            }, { passive: false });
+
+            document.addEventListener('touchmove', (e) => {
+                for (const t of e.changedTouches) {
+                    if (t.identifier === activeTouchId) {
+                        e.preventDefault();
+                        moveThumb(t.clientX, t.clientY);
+                        return;
+                    }
+                }
+            }, { passive: false });
+
+            document.addEventListener('touchend',   (e) => { for (const t of e.changedTouches) { if (t.identifier === activeTouchId) { resetThumb(); return; } } });
+            document.addEventListener('touchcancel',(e) => { for (const t of e.changedTouches) { if (t.identifier === activeTouchId) { resetThumb(); return; } } });
+        })();
+
+        // ============================================================
+        // === Phaser 미니게임 통합 ===
+        // ============================================================
+        window.startMiniGame = function(onComplete) {
+            const overlay     = document.getElementById('minigame-overlay');
+            const placeholder = document.getElementById('minigame-placeholder');
+            const contentEl   = document.getElementById('minigame-content');
+            const closeBtn    = document.getElementById('minigame-close');
+
+            overlay.classList.add('show');
+            placeholder.style.display = 'none';
+            contentEl.style.padding   = '0';
+            contentEl.style.overflow  = 'hidden';
+
+            // Phaser 마운트 div 생성
+            const mountEl = document.createElement('div');
+            mountEl.id = 'phaser-mount';
+            mountEl.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;';
+            contentEl.appendChild(mountEl);
+
+            let phaserInst = null;
+            let cleanedUp  = false;
+
+            function cleanup(delay) {
+                if (cleanedUp) return;
+                cleanedUp = true;
+                setTimeout(() => {
+                    if (phaserInst) { phaserInst.destroy(true); phaserInst = null; }
+                    const m = document.getElementById('phaser-mount');
+                    if (m) m.remove();
+                    placeholder.style.display = '';
+                    contentEl.style.padding   = '';
+                    contentEl.style.overflow  = '';
+                    overlay.classList.remove('show');
+                    onComplete();
+                }, delay || 0);
+            }
+
+            closeBtn.onclick = () => cleanup(0);
+
+            const GAME_W = 360;
+            const GAME_H = 450;
+
+            class MiniGameScene extends Phaser.Scene {
+                constructor() { super({ key: 'MiniGameScene' }); }
+
+                preload() {
+                    this.load.image('mg_bg',    'minigame/bg_road.png');
+                    this.load.image('mg_player','minigame/player.png');
+                    this.load.image('mg_obs1',  'minigame/obs_1.png');
+                    this.load.image('mg_obs2',  'minigame/obs_2.png');
+                    this.load.image('mg_obs3',  'minigame/obs_3.png');
+                    this.load.image('mg_item1', 'minigame/item_1.png');
+                    this.load.image('mg_item2', 'minigame/item_2.png');
+                }
+
+                create() {
+                    this.gameScore  = 0;
+                    this.timeLeft   = 60; // 60초
+                    this.lives      = 3;
+                    this.isOver     = false;
+
+                    this.bg = this.add.tileSprite(GAME_W / 2, GAME_H / 2, GAME_W, GAME_H, 'mg_bg');
+
+                    this.mgPlayer = this.physics.add.sprite(GAME_W / 2, GAME_H * 0.82, 'mg_player');
+                    this.mgPlayer.setScale(0.12);
+                    this.mgPlayer.body.setCollideWorldBounds(true);
+                    this.mgPlayer.body.setSize(this.mgPlayer.width * 0.5, this.mgPlayer.height * 0.8);
+
+                    this.obstacles = this.physics.add.group();
+                    this.items     = this.physics.add.group();
+                    this.cursors   = this.input.keyboard.createCursorKeys();
+
+                    // 터치: 좌/우 탭으로 이동
+                    this.input.on('pointerdown', (ptr) => {
+                        if (this.isOver) return;
+                        this.mgPlayer.x += ptr.x < GAME_W / 2 ? -80 : 80;
+                        this.mgPlayer.x = Phaser.Math.Clamp(this.mgPlayer.x, 30, GAME_W - 30);
+                    });
+
+                    // UI
+                    this.scoreText = this.add.text(10, 10, '점수: 0',
+                        { fontSize: '20px', fill: '#fff', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 });
+                    this.timerText = this.add.text(GAME_W - 60, 10, '01:00',
+                        { fontSize: '20px', fill: '#fff', fontStyle: 'bold', stroke: '#000', strokeThickness: 3 });
+                    this.livesText = this.add.text(10, 38, '❤️❤️❤️', { fontSize: '18px' });
+
+                    // 타이머 / 스폰
+                    this.time.addEvent({ delay: 1000, callback: this.tickTimer,   callbackScope: this, loop: true });
+                    this.time.addEvent({ delay: 1300, callback: this.spawnObs,    callbackScope: this, loop: true });
+                    this.time.addEvent({ delay: 2200, callback: this.spawnItem,   callbackScope: this, loop: true });
+
+                    this.physics.add.overlap(this.mgPlayer, this.obstacles, this.onHitObs,  null, this);
+                    this.physics.add.overlap(this.mgPlayer, this.items,     this.onGetItem, null, this);
+                }
+
+                update() {
+                    if (this.isOver) return;
+                    if (this.cursors.left.isDown)  this.mgPlayer.x -= 5;
+                    if (this.cursors.right.isDown) this.mgPlayer.x += 5;
+                    this.mgPlayer.x = Phaser.Math.Clamp(this.mgPlayer.x, 30, GAME_W - 30);
+                    this.bg.tilePositionY -= 3;
+                    this.obstacles.children.iterate(c => { if (c && c.y > GAME_H + 60) c.destroy(); });
+                    this.items.children.iterate(c => { if (c && c.y > GAME_H + 60) c.destroy(); });
+                }
+
+                spawnObs() {
+                    if (this.isOver) return;
+                    const x   = Phaser.Math.Between(40, GAME_W - 40);
+                    const key = Phaser.Math.RND.pick(['mg_obs1', 'mg_obs2', 'mg_obs3']);
+                    const obs = this.physics.add.sprite(x, -60, key);
+                    obs.setScale(0.15);
+                    obs.body.setSize(obs.width * 0.6, obs.height * 0.8);
+                    obs.body.setVelocityY(200 + (60 - this.timeLeft) * 3);
+                    this.obstacles.add(obs);
+                }
+
+                spawnItem() {
+                    if (this.isOver) return;
+                    const x    = Phaser.Math.Between(40, GAME_W - 40);
+                    const key  = Phaser.Math.RND.pick(['mg_item1', 'mg_item2']);
+                    const item = this.physics.add.sprite(x, -40, key);
+                    item.setScale(0.12);
+                    item.body.setVelocityY(150);
+                    this.items.add(item);
+                }
+
+                onGetItem(player, item) {
+                    item.destroy();
+                    this.gameScore += 150;
+                    this.scoreText.setText('점수: ' + this.gameScore);
+                }
+
+                onHitObs(player, obs) {
+                    obs.destroy();
+                    this.lives--;
+                    let h = '';
+                    for (let i = 0; i < this.lives; i++) h += '❤️';
+                    this.livesText.setText(h || '💀');
+                    this.cameras.main.shake(180, 0.03);
+                    if (this.lives <= 0) this.endGame(false);
+                }
+
+                tickTimer() {
+                    if (this.isOver) return;
+                    this.timeLeft--;
+                    const m = Math.floor(this.timeLeft / 60);
+                    const s = this.timeLeft % 60;
+                    this.timerText.setText(`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`);
+                    if (this.timeLeft <= 0) this.endGame(true);
+                }
+
+                endGame(isWin) {
+                    this.isOver = true;
+                    this.obstacles.clear(true, true);
+                    this.items.clear(true, true);
+                    this.mgPlayer.body.setVelocity(0, 0);
+                    const msg = isWin ? 'STAGE CLEAR! 🎉' : 'GAME OVER 😢';
+                    this.add.rectangle(GAME_W / 2, GAME_H / 2, GAME_W, 90, 0x000000, 0.75);
+                    this.add.text(GAME_W / 2, GAME_H / 2, msg, {
+                        fontSize: '30px', fill: '#ffeb3b', fontStyle: 'bold',
+                        stroke: '#000', strokeThickness: 5
+                    }).setOrigin(0.5);
+                    // 2.5초 후 자동 종료
+                    this.time.delayedCall(2500, () => cleanup(0));
+                }
+            }
+
+            phaserInst = new Phaser.Game({
+                type: Phaser.AUTO,
+                width: GAME_W,
+                height: GAME_H,
+                parent: 'phaser-mount',
+                backgroundColor: '#1a1a2e',
+                physics: { default: 'arcade', arcade: { gravity: { y: 0 }, debug: false } },
+                scene: [MiniGameScene],
+                scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }
+            });
+        };
+
+        // 게임 루프
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        gameLoop();
+    </script>
+</body>
+</html>

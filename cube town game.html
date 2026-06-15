@@ -25,30 +25,31 @@
             background: rgba(15, 23, 42, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(10px);
-            padding: 15px 25px;
+            padding: 10px 18px;
             border-radius: 12px;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
         h1 {
-            margin: 0 0 5px 0;
-            font-size: 20px;
+            margin: 0 0 3px 0;
+            font-size: 18px;
             color: #38bdf8;
         }
         p {
             margin: 0;
-            font-size: 14px;
+            font-size: 13px;
             color: #cbd5e1;
+            line-height: 1.45;
         }
         #score-display {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: bold;
             color: #f59e0b;
         }
         .controls {
             font-size: 12px;
             color: #94a3b8;
-            margin-top: 10px;
+            margin-top: 4px;
         }
         /* === 건물 진입 팝업 === */
         #popup-overlay {
@@ -134,7 +135,7 @@
             padding: 14px 18px 16px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
             width: max-content;
-            max-width: min(720px, calc(100vw - 40px));
+            max-width: min(400px, calc(100vw - 40px));
             pointer-events: none;
             z-index: 5;
         }
@@ -150,9 +151,10 @@
             border-bottom: 1px solid rgba(255, 255, 255, 0.08);
         }
         .kanban-grid {
-            display: grid;
-            grid-template-columns: minmax(120px, 1fr) minmax(280px, 2.2fr) minmax(110px, 1fr);
-            gap: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 280px;
         }
         .kanban-column {
             display: flex;
@@ -209,13 +211,13 @@
                 <div class="kanban-col-title">Company</div>
                 <div class="kanban-card">SER Co., Ltd.</div>
             </div>
+            <div class="kanban-column col-ceo">
+                <div class="kanban-col-title">Contact</div>
+                <div class="kanban-card">블라블라@블라블라.com</div>
+            </div>
             <div class="kanban-column col-address">
                 <div class="kanban-col-title">Address</div>
                 <div class="kanban-card">A122, 7F, 11-9, Teheran-ro 77-gil,<br>Gangnam-gu, Seoul, Republic of Korea</div>
-            </div>
-            <div class="kanban-column col-ceo">
-                <div class="kanban-col-title">C.E.O</div>
-                <div class="kanban-card">Jihyun Oh</div>
             </div>
         </div>
     </div>

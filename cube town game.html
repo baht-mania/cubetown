@@ -344,7 +344,10 @@
         <p style="margin:3px 0;"><b>, / .</b>: 충돌 반경 조정 (Shift: 큰 단계)</p>
         <p style="margin:3px 0;"><b>Delete</b>: 선택 오브젝트 제거</p>
         <p style="margin:3px 0;"><b>R</b>: 기본 위치로 리셋</p>
-        <p style="margin:3px 0;"><b>S</b>: objects[] 콘솔+클립보드 출력 (영구 박을 때)</p>
+        <p style="margin:3px 0; color:#10b981;"><b>B</b>: 박스 그리기 모드 ON/OFF</p>
+        <p style="margin:3px 0; color:#10b981;"><b>좌클릭+드래그</b> (B 모드): 충돌 박스 추가</p>
+        <p style="margin:3px 0; color:#10b981;"><b>X</b> (B 모드): 마지막 박스 제거</p>
+        <p style="margin:3px 0;"><b>S</b>: objects[] + 박스 콘솔+클립보드 출력</p>
         <div id="edit-selected" style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15); display:none;">
             <p style="margin:3px 0;"><b style="color:#f59e0b;">선택:</b> <span id="edit-key"></span></p>
             <p style="margin:3px 0;"><b style="color:#f59e0b;">좌표:</b> (<span id="edit-x"></span>, <span id="edit-y"></span>)</p>
@@ -682,6 +685,28 @@
             // 향후 좌표 입력 예시:
             // { x: 1000, y: 500, w: 200, h: 100, label: 'custom-1' },
         ];
+
+        // === 빨간 박스 대상 오브젝트 (사용자 스크린샷 기준 12개) ===
+        // 각 오브젝트의 발 위치 + PNG 크기*scale로 자동 박스 추가 (PNG의 75% 영역, 발 기준 위쪽 95%)
+        // 사용자가 편집 모드에서 박스 그리기 도구(B 키)로 미세 조정 가능
+        const COLLISION_TARGET_KEYS = new Set([
+            'tourism_center', 'fountain', 'ramen', 'hanok_shop',
+            'eiffel', 'night_market', 'china_food', 'pub',
+            'diner', 'milktea', 'statue_liberty', 'boulangerie'
+        ]);
+        for (const obj of objects) {
+            if (!COLLISION_TARGET_KEYS.has(obj.key)) continue;
+            const def = objectDefs[obj.key];
+            const s = obj.scale || 1;
+            const bw = def.w * s * 0.75;
+            const bh = def.h * s * 0.75;
+            MANUAL_COLLISION_BOXES.push({
+                x: obj.x - bw / 2,
+                y: obj.y - bh * 0.95,
+                w: bw, h: bh,
+                label: obj.key + '-auto'
+            });
+        }
 
         const buildings = [];
         if (COLLISION_AUTO_GENERATE) {
@@ -1249,6 +1274,20 @@
                     ctx.strokeRect(b.x, b.y, b.w, b.h);
                 }
                 ctx.setLineDash([]);
+                // 박스 그리기 프리뷰 (드래그 중 녹색 점선)
+                if (isDrawingBox && drawBoxStart && drawBoxCurrent) {
+                    const x = Math.min(drawBoxStart.x, drawBoxCurrent.x);
+                    const y = Math.min(drawBoxStart.y, drawBoxCurrent.y);
+                    const w = Math.abs(drawBoxCurrent.x - drawBoxStart.x);
+                    const h = Math.abs(drawBoxCurrent.y - drawBoxStart.y);
+                    ctx.fillStyle = 'rgba(16, 185, 129, 0.18)';
+                    ctx.fillRect(x, y, w, h);
+                    ctx.strokeStyle = '#10b981';
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([8, 6]);
+                    ctx.strokeRect(x, y, w, h);
+                    ctx.setLineDash([]);
+                }
             }
 
             // 편집 모드: 선택 오브젝트 외곽선 + 발 위치 마커 (scale 반영)
@@ -1284,6 +1323,12 @@
         let panActive = false;
         let panStart = null;
         let saveTimer = null; // localStorage debounce 타이머
+
+        // === 박스 그리기 모드 (충돌 영역 직접 그리기) ===
+        let boxDrawMode = false;
+        let isDrawingBox = false;
+        let drawBoxStart = null;
+        let drawBoxCurrent = null;
 
         // === localStorage 저장 / 리셋 ===
         function saveObjects() {
@@ -1455,9 +1500,19 @@
             const code = `const DEFAULT_OBJECTS = [\n${lines.join('\n')}\n];`;
             console.log('=== DEFAULT_OBJECTS (코드의 같은 변수 자리에 그대로 붙여넣기) ===');
             console.log(code);
+            // 수동 충돌 박스도 같이 export (자동 추정 박스는 코드에서 다시 생성되므로 사용자 추가분만)
+            const customBoxes = MANUAL_COLLISION_BOXES.filter(b => !b.label || !b.label.endsWith('-auto'));
+            if (customBoxes.length > 0) {
+                const boxLines = customBoxes.map(b =>
+                    `    { x: ${Math.round(b.x)}, y: ${Math.round(b.y)}, w: ${Math.round(b.w)}, h: ${Math.round(b.h)}, label: '${b.label || 'custom'}' },`
+                );
+                const boxCode = `const MANUAL_COLLISION_BOXES = [\n${boxLines.join('\n')}\n];`;
+                console.log('=== MANUAL_COLLISION_BOXES (수동 추가분만, 코드의 같은 변수 자리에 빈 배열 대신 박기) ===');
+                console.log(boxCode);
+            }
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(code).then(
-                    () => console.log('[✓ 클립보드 복사됨 → Cmd/Ctrl+V로 붙여넣기]'),
+                    () => console.log('[✓ DEFAULT_OBJECTS 클립보드 복사됨 → Cmd/Ctrl+V로 붙여넣기. 수동 박스는 콘솔에서 별도 복사]'),
                     () => console.log('[✗ 클립보드 실패 — 콘솔에서 직접 복사하세요]')
                 );
             } else {
@@ -1486,6 +1541,28 @@
             // R 키: 기본 위치 리셋
             if (e.code === 'KeyR') {
                 resetObjectsToDefault();
+                e.preventDefault();
+                return;
+            }
+            // B 키: 박스 그리기 모드 토글 (충돌 영역 직접 그리기)
+            if (e.code === 'KeyB') {
+                boxDrawMode = !boxDrawMode;
+                isDrawingBox = false;
+                drawBoxStart = null;
+                drawBoxCurrent = null;
+                canvas.style.cursor = boxDrawMode ? 'cell' : 'crosshair';
+                console.log(`[Box] 그리기 모드: ${boxDrawMode ? 'ON' : 'OFF'}`);
+                e.preventDefault();
+                return;
+            }
+            // X 키: 가장 최근 추가된 수동 박스 제거 (실수 되돌리기)
+            if (e.code === 'KeyX' && boxDrawMode) {
+                if (MANUAL_COLLISION_BOXES.length > 0) {
+                    const removed = MANUAL_COLLISION_BOXES.pop();
+                    console.log(`[Box] 제거됨: ${removed.label}`);
+                    rebuildBuildings();
+                    markDirty();
+                }
                 e.preventDefault();
                 return;
             }
@@ -1565,8 +1642,15 @@
                 return;
             }
             if (e.button !== 0) return;
-            // 좌클릭: 오브젝트 선택 / 드래그 시작
             const { x: wx, y: wy } = screenToWorld(e.clientX, e.clientY);
+            // 박스 그리기 모드: 좌클릭+드래그로 새 충돌 박스 시작
+            if (boxDrawMode) {
+                isDrawingBox = true;
+                drawBoxStart = { x: wx, y: wy };
+                drawBoxCurrent = { x: wx, y: wy };
+                return;
+            }
+            // 일반 좌클릭: 오브젝트 선택 / 드래그 시작
             const idx = pickObjectAt(wx, wy);
             if (idx >= 0) {
                 selectedIndex = idx;
@@ -1588,10 +1672,15 @@
             }
             if (!editMode) return;
             const { x: wx, y: wy } = screenToWorld(e.clientX, e.clientY);
-            if (isDragging && selectedIndex >= 0) {
+            // 박스 그리기 중: 현재 마우스 위치 업데이트 (프리뷰)
+            if (isDrawingBox) {
+                drawBoxCurrent = { x: wx, y: wy };
+            } else if (isDragging && selectedIndex >= 0) {
                 objects[selectedIndex].x = Math.round(wx - dragOffsetX);
                 objects[selectedIndex].y = Math.round(wy - dragOffsetY);
                 updateEditHUD();
+            } else if (boxDrawMode) {
+                canvas.style.cursor = 'cell';
             } else {
                 // 호버 cursor 피드백
                 const hoverIdx = pickObjectAt(wx, wy);
@@ -1606,10 +1695,32 @@
                 canvas.style.cursor = editMode ? 'crosshair' : 'default';
             }
             if (e.button === 0) {
+                // 박스 그리기 종료
+                if (isDrawingBox && drawBoxStart && drawBoxCurrent) {
+                    const x = Math.min(drawBoxStart.x, drawBoxCurrent.x);
+                    const y = Math.min(drawBoxStart.y, drawBoxCurrent.y);
+                    const w = Math.abs(drawBoxCurrent.x - drawBoxStart.x);
+                    const h = Math.abs(drawBoxCurrent.y - drawBoxStart.y);
+                    if (w > 10 && h > 10) {
+                        MANUAL_COLLISION_BOXES.push({
+                            x: Math.round(x), y: Math.round(y),
+                            w: Math.round(w), h: Math.round(h),
+                            label: 'custom-' + Date.now().toString().slice(-5)
+                        });
+                        rebuildBuildings();
+                        markDirty();
+                        console.log(`[Box] 추가됨: (${Math.round(x)}, ${Math.round(y)}, ${Math.round(w)}, ${Math.round(h)})`);
+                    }
+                    isDrawingBox = false;
+                    drawBoxStart = null;
+                    drawBoxCurrent = null;
+                    canvas.style.cursor = boxDrawMode ? 'cell' : 'crosshair';
+                    return;
+                }
                 const wasDragging = isDragging;
                 isDragging = false;
                 if (editMode) {
-                    canvas.style.cursor = 'crosshair';
+                    canvas.style.cursor = boxDrawMode ? 'cell' : 'crosshair';
                     if (wasDragging) markDirty(); // 드래그로 위치 변경 → 저장 예약
                 }
             }

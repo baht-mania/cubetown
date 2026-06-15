@@ -384,19 +384,12 @@
         }
 
         // 오브젝트(건물/소품) 그리는 함수 — (x, y)는 발(footer) 위치
+        // 그림자 없음 (사용자 요청). 이미지 하단이 (x, y) = 바닥에 바로 닿음
         function drawObject(obj) {
             const def = objectDefs[obj.key];
             if (!def.img.complete || !def.img.naturalWidth) return;
             const { x, y } = obj;
             const { w, h } = def;
-            // 그림자 강화: 충돌 footprint와 매치되는 크기로 더 진하게 — "맵에 박힌" 느낌
-            //   가로 = w * 0.42 (이전 0.28 → 50% 확대), 세로 = w * 0.16 (이전 0.11 → 45% 확대)
-            //   alpha = 0.55 (이전 0.4 → 진하게)
-            ctx.fillStyle = 'rgba(0,0,0,0.55)';
-            ctx.beginPath();
-            ctx.ellipse(x, y, w * 0.42, w * 0.16, 0, 0, Math.PI * 2);
-            ctx.fill();
-            // 본체 (이미지 하단이 발에 닿게)
             ctx.drawImage(def.img, x - w/2, y - h, w, h);
         }
 
@@ -418,12 +411,17 @@
             const { x, y, size, color, name, img, isMoving, bobPhase = 0 } = entity;
             const drawSize = size * 2 * 4; // 원래 원 직경(size*2) 대비 4배 → 120px
 
-            // (a) 보빙: 이동 중일 때만 캐릭터를 위아래로 살짝 흔들기 (sin파, 위상차로 동기화 방지)
-            const bobOffset = isMoving ? Math.sin(frameCount * 0.35 + bobPhase) * 6 : 0;
+            // === B: 걷는 모션 (squash & stretch) ===
+            //   1) bobbing 진폭 절반 (이전 ±6 → ±3) : 미세한 발 디딤
+            //   2) scaleY squash : sin이 음수일 때(발이 땅에 닿는 순간) 캐릭터를 살짝 눌러서
+            //      "체중이 실리는" 시각 단서 제공. 발 위치(y+15)는 고정 — 머리 위로만 짧아짐
+            const phase = frameCount * 0.35 + bobPhase;
+            const sinV = Math.sin(phase);
+            const bobOffset = isMoving ? sinV * 3 : 0;
+            const sy = isMoving ? (1 - Math.max(0, -sinV) * 0.06) : 1; // 1.0 ~ 0.94
+            const drawH = drawSize * sy;
 
-            // (b) 그림자 강화: 더 크고 진하게 — 캐릭터가 바닥에 박힌 느낌
-            //     bobOffset만큼 살짝 줄어들면 점프감 → 그림자는 고정 위치/크기로 두고
-            //     캐릭터만 흔들리게 해서 "발이 땅에서 안 떨어지는" 안정감 유지
+            // 그림자 (캐릭터는 유지 — 캐릭터의 발이 어디 있는지 시각 가이드)
             ctx.fillStyle = 'rgba(0,0,0,0.55)';
             ctx.beginPath();
             ctx.ellipse(x, y + 15, size * 2.4, size * 1.1, 0, 0, Math.PI * 2);
@@ -432,8 +430,8 @@
             // 캐릭터: 이미지 로드 완료 시 PNG, 미완료/실패 시 fallback 원형
             const imgReady = img && img.complete && img.naturalWidth > 0;
             if (imgReady) {
-                // 발이 그림자 중심(y+15)에 닿도록 정렬 + bobOffset 적용
-                ctx.drawImage(img, x - drawSize/2, y + 15 - drawSize + bobOffset, drawSize, drawSize);
+                // 발이 y+15 고정 + bobOffset, 높이는 squash로 짧아짐 (머리 위로만 줄어듦)
+                ctx.drawImage(img, x - drawSize/2, y + 15 - drawH + bobOffset, drawSize, drawH);
             } else {
                 ctx.fillStyle = color;
                 ctx.beginPath();
@@ -444,11 +442,11 @@
                 ctx.stroke();
             }
 
-            // 이름표 (캐릭터 머리 위, bobOffset 따라감)
+            // 이름표 (캐릭터 머리 위, squash + bobOffset 따라감)
             ctx.fillStyle = isPlayer ? '#38bdf8' : '#94a3b8';
             ctx.font = isPlayer ? 'bold 12px sans-serif' : '11px sans-serif';
             ctx.textAlign = 'center';
-            const labelY = imgReady ? (y + 15 - drawSize - 5 + bobOffset) : (y - 20 + bobOffset);
+            const labelY = imgReady ? (y + 15 - drawH - 5 + bobOffset) : (y - 20 + bobOffset);
             ctx.fillText(name, x, labelY);
         }
 

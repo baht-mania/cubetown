@@ -161,12 +161,14 @@
         <p style="margin:3px 0;"><b>좌클릭+드래그</b>: 오브젝트 이동</p>
         <p style="margin:3px 0;"><b>우클릭+드래그</b>: 카메라 이동</p>
         <p style="margin:3px 0;"><b>방향키</b>: 1px (Shift: 10px)</p>
+        <p style="margin:3px 0;"><b>휠 / [</b> · <b>]</b>: 크기 조정 (Shift: 큰 단계)</p>
         <p style="margin:3px 0;"><b>Delete</b>: 선택 오브젝트 제거</p>
         <p style="margin:3px 0;"><b>R</b>: 기본 위치로 리셋</p>
         <p style="margin:3px 0;"><b>S</b>: objects[] 콘솔+클립보드 출력 (영구 박을 때)</p>
         <div id="edit-selected" style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15); display:none;">
             <p style="margin:3px 0;"><b style="color:#f59e0b;">선택:</b> <span id="edit-key"></span></p>
             <p style="margin:3px 0;"><b style="color:#f59e0b;">좌표:</b> (<span id="edit-x"></span>, <span id="edit-y"></span>)</p>
+            <p style="margin:3px 0;"><b style="color:#f59e0b;">크기:</b> <span id="edit-scale">100%</span></p>
         </div>
         <p style="margin-top:10px; color:#10b981; font-size:11px;">자동 저장: <span id="save-time">대기 중</span></p>
         <p style="margin:3px 0; color:#94a3b8; font-size:11px;">cursor: <span id="edit-mouse">0, 0</span></p>
@@ -305,24 +307,41 @@
         const STORAGE_KEY = 'cube_town_object_positions_v1';
 
         // 저장된 위치 불러오기 (없거나 손상이면 null)
+        // scale은 옵션 (없으면 1.0). 코드에 신규 오브젝트 추가 시 마이그레이션 (사용자 변경 보존)
         function loadObjectsFromStorage() {
             try {
                 const json = localStorage.getItem(STORAGE_KEY);
                 if (!json) return null;
                 const data = JSON.parse(json);
                 if (!Array.isArray(data.objects)) return null;
-                // 검증: 모든 key가 현재 objectDefs에 존재하고 좌표가 유효한지
                 const valid = data.objects.every(o =>
                     typeof o.key === 'string' && objectDefs[o.key] &&
                     typeof o.x === 'number' && typeof o.y === 'number' &&
-                    isFinite(o.x) && isFinite(o.y)
+                    isFinite(o.x) && isFinite(o.y) &&
+                    (o.scale === undefined || (typeof o.scale === 'number' && isFinite(o.scale) && o.scale > 0))
                 );
                 if (!valid) {
                     console.warn('[Storage] 저장 데이터 검증 실패 → 기본 위치 사용');
                     return null;
                 }
-                console.log(`[Storage] 저장된 ${data.objects.length}개 오브젝트 위치 로드됨 (${data.savedAt || '시간 미상'})`);
-                return data.objects.map(o => ({ key: o.key, x: o.x, y: o.y }));
+                const loaded = data.objects.map(o => {
+                    const out = { key: o.key, x: o.x, y: o.y };
+                    if (o.scale !== undefined) out.scale = o.scale;
+                    return out;
+                });
+                // 마이그레이션: 코드에 신규 오브젝트 추가됨 → 저장된 뒤에 default 보충
+                if (loaded.length < DEFAULT_OBJECTS.length) {
+                    for (let i = loaded.length; i < DEFAULT_OBJECTS.length; i++) {
+                        loaded.push({ ...DEFAULT_OBJECTS[i] });
+                    }
+                    console.log(`[Storage] 신규 오브젝트 ${DEFAULT_OBJECTS.length - data.objects.length}개 추가됨 (기존 위치는 보존)`);
+                } else if (loaded.length > DEFAULT_OBJECTS.length) {
+                    console.warn('[Storage] 저장 개수가 코드보다 많음 → 기본 사용 (R로 리셋 가능)');
+                    return null;
+                } else {
+                    console.log(`[Storage] 저장된 ${loaded.length}개 오브젝트 위치 로드됨`);
+                }
+                return loaded;
             } catch (e) {
                 console.warn('[Storage] 로드 실패:', e.message);
                 return null;
@@ -386,7 +405,41 @@
 
             // === 안내판 ===
             { key: 'map_sign',        x: 800,  y: 300  }, // 입구(1) 옆
-            { key: 'arrow_sign',      x: 1500, y: 1050 }  // 그리드 갈림길
+            { key: 'arrow_sign',      x: 1500, y: 1050 }, // 그리드 갈림길
+
+            // === 신규 추가 인스턴스 (사용자 요청) ===
+            // sakura ×10 (전체 맵 자연 분산)
+            { key: 'sakura', x: 300,  y: 700  },
+            { key: 'sakura', x: 700,  y: 1700 },
+            { key: 'sakura', x: 2300, y: 1700 },
+            { key: 'sakura', x: 2700, y: 1100 },
+            { key: 'sakura', x: 300,  y: 2300 },
+            { key: 'sakura', x: 1900, y: 700  },
+            { key: 'sakura', x: 350,  y: 1500 },
+            { key: 'sakura', x: 2700, y: 800  },
+            { key: 'sakura', x: 1700, y: 2300 },
+            { key: 'sakura', x: 2400, y: 2600 },
+            // bench ×5 (광장 · 정원 · 시냇물 가)
+            { key: 'bench', x: 700,  y: 1900 },
+            { key: 'bench', x: 2100, y: 1900 },
+            { key: 'bench', x: 1500, y: 2700 },
+            { key: 'bench', x: 900,  y: 1100 },
+            { key: 'bench', x: 2100, y: 1100 },
+            // streetlight ×5 (셀 중앙 경로변)
+            { key: 'streetlight', x: 1500, y: 1000 },
+            { key: 'streetlight', x: 1500, y: 2000 },
+            { key: 'streetlight', x: 500,  y: 1500 },
+            { key: 'streetlight', x: 2500, y: 1500 },
+            { key: 'streetlight', x: 300,  y: 800  },
+            // arrow_sign ×3 (좌측·우측·하단 갈림길)
+            { key: 'arrow_sign', x: 500,  y: 1050 },
+            { key: 'arrow_sign', x: 2500, y: 1050 },
+            { key: 'arrow_sign', x: 1050, y: 2000 },
+            // red_light ×2 (일본 zone 추가 등롱)
+            { key: 'red_light', x: 2650, y: 2400 },
+            { key: 'red_light', x: 2150, y: 2700 },
+            // torii ×1 (좌하 일본 zone 액센트)
+            { key: 'torii', x: 200, y: 2400 }
         ];
         // localStorage가 우선, 없거나 손상이면 DEFAULT_OBJECTS의 deep copy 사용
         const objects = loadObjectsFromStorage() || DEFAULT_OBJECTS.map(o => ({ ...o }));
@@ -419,8 +472,9 @@
             const def = objectDefs[obj.key];
             const [cwR, chR] = def.collideRatio;
             if (cwR > 0 && chR > 0) {
-                const cw = def.w * cwR;
-                const ch = def.h * chR;
+                const s = obj.scale || 1;
+                const cw = def.w * cwR * s;
+                const ch = def.h * chR * s;
                 buildings.push({
                     x: obj.x - cw / 2,
                     y: obj.y - ch,
@@ -617,13 +671,15 @@
         }
 
         // 오브젝트(건물/소품) 그리는 함수 — (x, y)는 발(footer) 위치
-        // 그림자 없음 (사용자 요청). 이미지 하단이 (x, y) = 바닥에 바로 닿음
+        // 그림자 없음. 이미지 하단이 (x, y) = 바닥에 바로 닿음.
+        // obj.scale (0.3~3.0, 기본 1.0) 적용 — 발 위치 고정, 위쪽으로만 늘어남
         function drawObject(obj) {
             const def = objectDefs[obj.key];
             if (!def.img.complete || !def.img.naturalWidth) return;
-            const { x, y } = obj;
-            const { w, h } = def;
-            ctx.drawImage(def.img, x - w/2, y - h, w, h);
+            const s = obj.scale || 1;
+            const w = def.w * s;
+            const h = def.h * s;
+            ctx.drawImage(def.img, obj.x - w/2, obj.y - h, w, h);
         }
 
         // 큐브 그리는 함수 (z-sort에 포함시키기 위해 분리)
@@ -722,16 +778,19 @@
             }
             ctx.shadowBlur = 0; // 큐브 글로우 잔여 초기화
 
-            // 편집 모드: 선택 오브젝트 외곽선 + 발 위치 마커
+            // 편집 모드: 선택 오브젝트 외곽선 + 발 위치 마커 (scale 반영)
             if (editMode && selectedIndex >= 0 && objects[selectedIndex]) {
                 const obj = objects[selectedIndex];
                 const def = objectDefs[obj.key];
-                const x0 = obj.x - def.w / 2;
-                const y0 = obj.y - def.h;
+                const s = obj.scale || 1;
+                const w = def.w * s;
+                const h = def.h * s;
+                const x0 = obj.x - w / 2;
+                const y0 = obj.y - h;
                 ctx.strokeStyle = '#f59e0b';
                 ctx.lineWidth = 3;
                 ctx.setLineDash([10, 6]);
-                ctx.strokeRect(x0, y0, def.w, def.h);
+                ctx.strokeRect(x0, y0, w, h);
                 ctx.setLineDash([]);
                 ctx.fillStyle = '#f59e0b';
                 ctx.beginPath();
@@ -759,11 +818,12 @@
                 localStorage.setItem(STORAGE_KEY, JSON.stringify({
                     version: 1,
                     savedAt: new Date().toISOString(),
-                    objects: objects.map(o => ({
-                        key: o.key,
-                        x: Math.round(o.x),
-                        y: Math.round(o.y)
-                    }))
+                    objects: objects.map(o => {
+                        const out = { key: o.key, x: Math.round(o.x), y: Math.round(o.y) };
+                        // scale은 1.0이 아닐 때만 저장 (용량 절약)
+                        if (o.scale && o.scale !== 1) out.scale = Math.round(o.scale * 100) / 100;
+                        return out;
+                    })
                 }));
                 updateSaveTime();
             } catch (e) {
@@ -804,6 +864,7 @@
         const editKeyEl   = document.getElementById('edit-key');
         const editXEl     = document.getElementById('edit-x');
         const editYEl     = document.getElementById('edit-y');
+        const editScaleEl = document.getElementById('edit-scale');
         const editMouseEl = document.getElementById('edit-mouse');
 
         function screenToWorld(clientX, clientY) {
@@ -814,15 +875,18 @@
             };
         }
 
-        // y-sort 역순(앞쪽 우선) 사각 box 검사
+        // y-sort 역순(앞쪽 우선) 사각 box 검사 — scale 반영
         function pickObjectAt(wx, wy) {
             const sorted = objects.map((o, i) => ({ o, i }))
                 .sort((a, b) => b.o.y - a.o.y);
             for (const { o, i } of sorted) {
                 const def = objectDefs[o.key];
-                const x0 = o.x - def.w / 2;
-                const y0 = o.y - def.h;
-                if (wx >= x0 && wx < x0 + def.w && wy >= y0 && wy < y0 + def.h) return i;
+                const s = o.scale || 1;
+                const w = def.w * s;
+                const h = def.h * s;
+                const x0 = o.x - w / 2;
+                const y0 = o.y - h;
+                if (wx >= x0 && wx < x0 + w && wy >= y0 && wy < y0 + h) return i;
             }
             return -1;
         }
@@ -834,20 +898,22 @@
                 editKeyEl.innerText = obj.key;
                 editXEl.innerText = Math.round(obj.x);
                 editYEl.innerText = Math.round(obj.y);
+                if (editScaleEl) editScaleEl.innerText = Math.round((obj.scale || 1) * 100) + '%';
             } else {
                 editSelDom.style.display = 'none';
             }
         }
 
-        // 편집 종료 시 충돌 박스 재계산 (objects 이동/삭제 반영)
+        // 편집 종료 시 충돌 박스 재계산 (objects 이동/삭제/크기 반영)
         function rebuildBuildings() {
             buildings.length = 0;
             for (const obj of objects) {
                 const def = objectDefs[obj.key];
                 const [cwR, chR] = def.collideRatio;
                 if (cwR > 0 && chR > 0) {
-                    const cw = def.w * cwR;
-                    const ch = def.h * chR;
+                    const s = obj.scale || 1;
+                    const cw = def.w * cwR * s;
+                    const ch = def.h * chR * s;
                     buildings.push({
                         x: obj.x - cw / 2,
                         y: obj.y - ch,
@@ -925,6 +991,20 @@
             // R 키: 기본 위치 리셋
             if (e.code === 'KeyR') {
                 resetObjectsToDefault();
+                e.preventDefault();
+                return;
+            }
+            // [ / ] : 선택 오브젝트 크기 조정 (Shift = 큰 단계)
+            if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
+                if (selectedIndex >= 0) {
+                    const step = e.shiftKey ? 0.25 : 0.05;
+                    const delta = e.code === 'BracketLeft' ? -step : step;
+                    const obj = objects[selectedIndex];
+                    obj.scale = Math.max(0.3, Math.min(3.0, (obj.scale || 1) + delta));
+                    obj.scale = Math.round(obj.scale * 100) / 100;
+                    markDirty();
+                    updateEditHUD();
+                }
                 e.preventDefault();
                 return;
             }
@@ -1025,6 +1105,20 @@
                 }
             }
         });
+
+        // 마우스 휠: 선택 오브젝트 크기 조정 (편집 모드 + 선택 시에만)
+        canvas.addEventListener('wheel', (e) => {
+            if (!editMode || selectedIndex < 0) return;
+            e.preventDefault();
+            const obj = objects[selectedIndex];
+            // 휠 위(deltaY<0) = 크게, 아래(deltaY>0) = 작게. Shift = 큰 단계
+            const step = e.shiftKey ? 0.15 : 0.05;
+            const delta = e.deltaY > 0 ? -step : step;
+            obj.scale = Math.max(0.3, Math.min(3.0, (obj.scale || 1) + delta));
+            obj.scale = Math.round(obj.scale * 100) / 100;
+            markDirty();
+            updateEditHUD();
+        }, { passive: false });
 
         // 게임 루프
         function gameLoop() {

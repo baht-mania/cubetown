@@ -97,6 +97,10 @@
             botImgs.push(img);
         }
 
+        // 배경 맵 이미지 (1024×1024 → 게임 좌표 3000×3000 으로 nearest-neighbor 업스케일)
+        const bgImg = new Image();
+        bgImg.src = 'assets/game/결과물1.png';
+
         // 키 입력 상태
         const keys = {};
         window.addEventListener('keydown', (e) => keys[e.code] = true);
@@ -116,14 +120,15 @@
             img: playerImg
         };
 
-        // 장애물 (건물, 구역 등)
+        // 장애물 (건물, 구역 등) - 배경 결과물1.png 의 zone 위치에 맞춰 재정의
+        // 1024 px 이미지 기준 좌표를 3000 px 게임 좌표계로 환산 (×2.93)
         const buildings = [
-            { x: 1000, y: 1000, w: 300, h: 200, color: '#1e293b', label: '여행 센터' },
-            { x: 1500, y: 800, w: 250, h: 350, color: '#1e293b', label: '이벤트 광장' },
-            { x: 800, y: 1500, w: 400, h: 150, color: '#1e293b', label: '상점가' },
-            { x: 1800, y: 1600, w: 200, h: 200, color: '#1e293b', label: '유저 공간' },
-            { x: 1300, y: 1800, w: 300, h: 250, color: '#1e293b', label: '전시관' },
-            { x: 500, y: 500, w: 200, h: 200, color: '#1e293b', label: '입구 구역' }
+            { x: 250,  y: 150,  w: 550, h: 350, label: '입구 구역' },   // 좌상 - 한옥 대문
+            { x: 1050, y: 120,  w: 550, h: 480, label: '여행 센터' },   // 상단 중앙 - 한옥 기와
+            { x: 2050, y: 150,  w: 700, h: 550, label: '이벤트 광장' }, // 우상 - 원형 무대
+            { x: 150,  y: 800,  w: 650, h: 550, label: '상점가' },      // 좌중 - 노점
+            { x: 2100, y: 850,  w: 600, h: 600, label: '유저 공간' },   // 우중 - 정자
+            { x: 950,  y: 1700, w: 800, h: 550, label: '전시관' }       // 하단 중앙 - 갤러리
         ];
 
         // 봇 (NPC) 배열 및 생성 로직
@@ -310,35 +315,16 @@
             ctx.save();
             ctx.translate(-camera.x, -camera.y);
 
-            // 바닥 그리드
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(0, 0, WORLD_SIZE, WORLD_SIZE);
-            ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-            ctx.lineWidth = 2;
-            const gridSize = 100;
-            ctx.beginPath();
-            for(let x = 0; x <= WORLD_SIZE; x += gridSize) {
-                ctx.moveTo(x, 0); ctx.lineTo(x, WORLD_SIZE);
+            // 배경 맵 이미지 (로드 완료 시) 또는 fallback 다크
+            if (bgImg.complete && bgImg.naturalWidth > 0) {
+                ctx.drawImage(bgImg, 0, 0, WORLD_SIZE, WORLD_SIZE);
+            } else {
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(0, 0, WORLD_SIZE, WORLD_SIZE);
             }
-            for(let y = 0; y <= WORLD_SIZE; y += gridSize) {
-                ctx.moveTo(0, y); ctx.lineTo(WORLD_SIZE, y);
-            }
-            ctx.stroke();
 
-            // 건물
-            buildings.forEach(b => {
-                ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                ctx.fillRect(b.x + 10, b.y + 10, b.w, b.h);
-                ctx.fillStyle = b.color;
-                ctx.fillRect(b.x, b.y, b.w, b.h);
-                ctx.strokeStyle = '#334155';
-                ctx.lineWidth = 4;
-                ctx.strokeRect(b.x, b.y, b.w, b.h);
-                ctx.fillStyle = '#94a3b8';
-                ctx.font = 'bold 24px sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(b.label, b.x + b.w/2, b.y + b.h/2 + 8);
-            });
+            // 건물 시각 박스는 배경 이미지에 이미 그려져 있으므로 제거.
+            // buildings[] 데이터는 충돌 판정용으로만 유지 (checkCollision, 큐브 스폰 회피).
 
             // 큐브
             cubes.forEach(cube => {

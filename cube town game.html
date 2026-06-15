@@ -460,7 +460,8 @@
         function loadZoom() {
             try {
                 const v = parseFloat(localStorage.getItem(ZOOM_KEY) || '1');
-                if (isFinite(v) && v >= 1.0 && v <= 1.5) return v;
+                // 1.0 미만은 default, 1.2 초과는 1.2로 clamp (이전 1.5 저장값 자동 보정)
+                if (isFinite(v) && v >= 1.0) return Math.min(v, 1.2);
             } catch (e) {}
             return 1.0;
         }
@@ -474,7 +475,7 @@
             x: WORLD_SIZE / 2,
             y: WORLD_SIZE / 2,
             size: 15,
-            speed: 4.2, // 이전 6의 70% (사용자 요청)
+            speed: 5.46, // 이전 4.2의 +30% (사용자 요청, 봇은 현재 속도 유지)
             color: '#3b82f6',
             name: '나',
             img: playerImg,
@@ -484,9 +485,10 @@
 
         // 장애물 (충돌 박스) - objects[] 의 collideRatio 값을 기반으로 자동 생성.
         // 발(footer) 좌표 기준 발 footprint만 충돌 → 큰 건물도 윗부분(지붕/탑신)은 통과 가능 = 시각적 자연
-        // 충돌 시스템: 모든 오브젝트 발 위치(x, y)에 반경 5px 원형 (사각 박스 10×10으로 근사)
+        // 충돌 시스템: 모든 오브젝트 발 위치(x, y)에 반경 10px 원형 (사각 박스 20×20으로 근사)
+        // 반경 5px이 너무 작아 통과 누락 다수 발생 → 10px로 키워 모든 오브젝트(나무·건물·벤치·토리이 등)와 안정 충돌
         // noCollide=true인 오브젝트(01 한옥문, 07 빨간 다리)는 통과 가능 → 스킵
-        const COLLIDE_RADIUS = 5;
+        const COLLIDE_RADIUS = 10;
         const buildings = [];
         for (const obj of objects) {
             const def = objectDefs[obj.key];
@@ -784,12 +786,15 @@
             // buildings[] 데이터는 충돌 판정용으로만 유지 (checkCollision, 큐브 스폰 회피).
 
             // === y-sort 드로어블: 오브젝트 + 큐브 + 봇 + 플레이어를 y 좌표 기준으로 정렬 후 그리기 ===
-            // 화면 아래쪽(y가 큰)일수록 앞에 그려져서 자연스러운 톱뷰 깊이감 형성
+            // 화면 아래쪽(y가 큰)일수록 앞에 그려져서 자연스러운 톱뷰 깊이감 형성.
+            // 단, 캐릭터(봇 + 플레이어)는 Z_CHARACTER 오프셋으로 항상 모든 오브젝트 위 (사용자 요청).
+            // 캐릭터끼리는 기존 y-sort 유지 (서로 자연스러운 앞/뒤).
+            const Z_CHARACTER = 10000000;
             const drawables = [];
-            for (const obj of objects)  drawables.push({ type: 'obj',    sortY: obj.y,        data: obj });
-            for (const cube of cubes)   drawables.push({ type: 'cube',   sortY: cube.y,       data: cube });
-            for (const bot of bots)     drawables.push({ type: 'bot',    sortY: bot.y + 15,   data: bot });
-            drawables.push({                         type: 'player', sortY: player.y + 15,data: player });
+            for (const obj of objects)  drawables.push({ type: 'obj',    sortY: obj.y,                       data: obj });
+            for (const cube of cubes)   drawables.push({ type: 'cube',   sortY: cube.y,                      data: cube });
+            for (const bot of bots)     drawables.push({ type: 'bot',    sortY: Z_CHARACTER + bot.y + 15,    data: bot });
+            drawables.push({                         type: 'player', sortY: Z_CHARACTER + player.y + 15, data: player });
             drawables.sort((a, b) => a.sortY - b.sortY);
 
             for (const d of drawables) {
@@ -968,6 +973,12 @@
                 }
             } else {
                 canvas.style.cursor = 'crosshair';
+                // 편집 진입 시 카메라를 플레이어 중심으로 즉시 정렬 (편집 시작 = 캐릭터 위치).
+                // 그 후엔 update가 멈추므로 우클릭 드래그/방향키로 자유 패닝 가능.
+                camera.x = player.x - canvas.width / 2;
+                camera.y = player.y - canvas.height / 2;
+                camera.x = Math.max(0, Math.min(camera.x, WORLD_SIZE - canvas.width));
+                camera.y = Math.max(0, Math.min(camera.y, WORLD_SIZE - canvas.height));
             }
             updateEditHUD();
         }
@@ -1140,11 +1151,11 @@
                 markDirty();
                 updateEditHUD();
             } else {
-                // 일반 모드: 줌 (1.0 ~ 1.5)
+                // 일반 모드: 줌 (1.0 ~ 1.2)
                 e.preventDefault();
                 const step = 0.05;
-                // 휠 위(deltaY<0) → 줌인 (1.0 쪽), 아래 → 줌아웃 (1.5 쪽)
-                zoomLevel = Math.max(1.0, Math.min(1.5, zoomLevel + (e.deltaY > 0 ? step : -step)));
+                // 휠 위(deltaY<0) → 줌인 (1.0 쪽), 아래 → 줌아웃 (1.2 쪽)
+                zoomLevel = Math.max(1.0, Math.min(1.2, zoomLevel + (e.deltaY > 0 ? step : -step)));
                 zoomLevel = Math.round(zoomLevel * 100) / 100;
                 saveZoom();
             }

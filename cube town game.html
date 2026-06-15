@@ -117,7 +117,9 @@
             speed: 6,
             color: '#3b82f6',
             name: '나',
-            img: playerImg
+            img: playerImg,
+            isMoving: false,
+            bobPhase: Math.random() * Math.PI * 2 // 각 캐릭터의 보빙 위상차 (동기화 방지)
         };
 
         // 장애물 (건물, 구역 등) - 결과물2.png는 순수 바닥(입체 구조물 X)이라 충돌 영역 없음.
@@ -140,7 +142,9 @@
                 name: `Bot-${i+1}`,
                 targetX: Math.random() * WORLD_SIZE,
                 targetY: Math.random() * WORLD_SIZE,
-                img: botImgs[i] // i=0 → 캐릭터1.png, i=19 → 캐릭터20.png 순서대로 할당
+                img: botImgs[i], // i=0 → 캐릭터1.png, i=19 → 캐릭터20.png 순서대로 할당
+                isMoving: false,
+                bobPhase: Math.random() * Math.PI * 2 // 보빙 위상차
             });
         }
 
@@ -218,11 +222,14 @@
                 dy = (dy / length) * player.speed;
             }
 
+            const oldPx = player.x, oldPy = player.y;
             if (dx !== 0 && !checkCollision(player.x + dx, player.y, player.size)) player.x += dx;
             if (dy !== 0 && !checkCollision(player.x, player.y + dy, player.size)) player.y += dy;
+            player.isMoving = (player.x !== oldPx || player.y !== oldPy);
 
             // --- 봇 이동 로직 ---
             bots.forEach(bot => {
+                const oldBx = bot.x, oldBy = bot.y;
                 let botDx = bot.targetX - bot.x;
                 let botDy = bot.targetY - bot.y;
                 let dist = Math.sqrt(botDx*botDx + botDy*botDy);
@@ -244,6 +251,7 @@
                         bot.targetY = Math.random() * WORLD_SIZE;
                     }
                 }
+                bot.isMoving = (bot.x !== oldBx || bot.y !== oldBy);
             });
 
             // 큐브 획득 판정
@@ -269,35 +277,40 @@
 
         // 아바타 그리는 공통 함수 (플레이어 및 봇 재사용)
         function drawAvatar(entity, isPlayer = false) {
-            const { x, y, size, color, name, img } = entity;
+            const { x, y, size, color, name, img, isMoving, bobPhase = 0 } = entity;
             const drawSize = size * 2 * 4; // 원래 원 직경(size*2) 대비 4배 → 120px
 
-            // 그림자 (원본 충돌 반경 기준, y+15 위치 유지)
-            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            // (a) 보빙: 이동 중일 때만 캐릭터를 위아래로 살짝 흔들기 (sin파, 위상차로 동기화 방지)
+            const bobOffset = isMoving ? Math.sin(frameCount * 0.35 + bobPhase) * 6 : 0;
+
+            // (b) 그림자 강화: 더 크고 진하게 — 캐릭터가 바닥에 박힌 느낌
+            //     bobOffset만큼 살짝 줄어들면 점프감 → 그림자는 고정 위치/크기로 두고
+            //     캐릭터만 흔들리게 해서 "발이 땅에서 안 떨어지는" 안정감 유지
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
             ctx.beginPath();
-            ctx.ellipse(x, y + 15, size, size/2, 0, 0, Math.PI * 2);
+            ctx.ellipse(x, y + 15, size * 2.4, size * 1.1, 0, 0, Math.PI * 2);
             ctx.fill();
 
             // 캐릭터: 이미지 로드 완료 시 PNG, 미완료/실패 시 fallback 원형
             const imgReady = img && img.complete && img.naturalWidth > 0;
             if (imgReady) {
-                // 발이 그림자 중심(y+15)에 닿도록 정렬
-                ctx.drawImage(img, x - drawSize/2, y + 15 - drawSize, drawSize, drawSize);
+                // 발이 그림자 중심(y+15)에 닿도록 정렬 + bobOffset 적용
+                ctx.drawImage(img, x - drawSize/2, y + 15 - drawSize + bobOffset, drawSize, drawSize);
             } else {
                 ctx.fillStyle = color;
                 ctx.beginPath();
-                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.arc(x, y + bobOffset, size, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.strokeStyle = isPlayer ? '#fff' : 'rgba(255,255,255,0.5)';
                 ctx.lineWidth = isPlayer ? 2 : 1;
                 ctx.stroke();
             }
 
-            // 이름표 (캐릭터 머리 위)
+            // 이름표 (캐릭터 머리 위, bobOffset 따라감)
             ctx.fillStyle = isPlayer ? '#38bdf8' : '#94a3b8';
             ctx.font = isPlayer ? 'bold 12px sans-serif' : '11px sans-serif';
             ctx.textAlign = 'center';
-            const labelY = imgReady ? (y + 15 - drawSize - 5) : (y - 20);
+            const labelY = imgReady ? (y + 15 - drawSize - 5 + bobOffset) : (y - 20 + bobOffset);
             ctx.fillText(name, x, labelY);
         }
 

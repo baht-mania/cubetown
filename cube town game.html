@@ -154,6 +154,22 @@
         </div>
     </div>
 
+    <!-- 편집 모드 HUD (E 키로 토글) -->
+    <div id="edit-mode-hud" class="hud-box" style="display:none; position:fixed; top:20px; right:20px; max-width:280px; pointer-events:none;">
+        <h1 style="color:#f59e0b; margin-bottom:8px;">[ EDIT MODE ]</h1>
+        <p style="margin:3px 0;"><b>E</b>: 편집 종료</p>
+        <p style="margin:3px 0;"><b>좌클릭+드래그</b>: 오브젝트 이동</p>
+        <p style="margin:3px 0;"><b>우클릭+드래그</b>: 카메라 이동</p>
+        <p style="margin:3px 0;"><b>방향키</b>: 1px (Shift: 10px)</p>
+        <p style="margin:3px 0;"><b>Delete</b>: 선택 오브젝트 제거</p>
+        <p style="margin:3px 0;"><b>S</b>: objects[] 콘솔+클립보드 출력</p>
+        <div id="edit-selected" style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15); display:none;">
+            <p style="margin:3px 0;"><b style="color:#f59e0b;">선택:</b> <span id="edit-key"></span></p>
+            <p style="margin:3px 0;"><b style="color:#f59e0b;">좌표:</b> (<span id="edit-x"></span>, <span id="edit-y"></span>)</p>
+        </div>
+        <p style="margin-top:10px; color:#94a3b8; font-size:11px;">cursor: <span id="edit-mouse">0, 0</span></p>
+    </div>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -491,6 +507,8 @@
 
             // 팝업 떠 있는 동안 게임 일시정지 (이동/봇/큐브 모두 멈춤)
             if (popupOpen) return;
+            // 편집 모드: 게임 로직 전체 일시정지. 카메라는 마우스 패닝/화살표로 자유 이동
+            if (editMode) return;
 
             // --- 플레이어 이동 로직 ---
             let dx = 0;
@@ -669,8 +687,250 @@
             }
             ctx.shadowBlur = 0; // 큐브 글로우 잔여 초기화
 
+            // 편집 모드: 선택 오브젝트 외곽선 + 발 위치 마커
+            if (editMode && selectedIndex >= 0 && objects[selectedIndex]) {
+                const obj = objects[selectedIndex];
+                const def = objectDefs[obj.key];
+                const x0 = obj.x - def.w / 2;
+                const y0 = obj.y - def.h;
+                ctx.strokeStyle = '#f59e0b';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([10, 6]);
+                ctx.strokeRect(x0, y0, def.w, def.h);
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(obj.x, obj.y, 9, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
             ctx.restore();
         }
+
+        // ============================================================
+        // === 편집 모드 (E 키 토글) — 오브젝트 위치 조정 도구 ===
+        // ============================================================
+        let editMode = false;
+        let selectedIndex = -1;
+        let isDragging = false;
+        let dragOffsetX = 0, dragOffsetY = 0;
+        let panActive = false;
+        let panStart = null;
+
+        const editHud     = document.getElementById('edit-mode-hud');
+        const editSelDom  = document.getElementById('edit-selected');
+        const editKeyEl   = document.getElementById('edit-key');
+        const editXEl     = document.getElementById('edit-x');
+        const editYEl     = document.getElementById('edit-y');
+        const editMouseEl = document.getElementById('edit-mouse');
+
+        function screenToWorld(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (clientX - rect.left) + camera.x,
+                y: (clientY - rect.top)  + camera.y
+            };
+        }
+
+        // y-sort 역순(앞쪽 우선) 사각 box 검사
+        function pickObjectAt(wx, wy) {
+            const sorted = objects.map((o, i) => ({ o, i }))
+                .sort((a, b) => b.o.y - a.o.y);
+            for (const { o, i } of sorted) {
+                const def = objectDefs[o.key];
+                const x0 = o.x - def.w / 2;
+                const y0 = o.y - def.h;
+                if (wx >= x0 && wx < x0 + def.w && wy >= y0 && wy < y0 + def.h) return i;
+            }
+            return -1;
+        }
+
+        function updateEditHUD() {
+            if (selectedIndex >= 0 && objects[selectedIndex]) {
+                const obj = objects[selectedIndex];
+                editSelDom.style.display = 'block';
+                editKeyEl.innerText = obj.key;
+                editXEl.innerText = Math.round(obj.x);
+                editYEl.innerText = Math.round(obj.y);
+            } else {
+                editSelDom.style.display = 'none';
+            }
+        }
+
+        // 편집 종료 시 충돌 박스 재계산 (objects 이동/삭제 반영)
+        function rebuildBuildings() {
+            buildings.length = 0;
+            for (const obj of objects) {
+                const def = objectDefs[obj.key];
+                const [cwR, chR] = def.collideRatio;
+                if (cwR > 0 && chR > 0) {
+                    const cw = def.w * cwR;
+                    const ch = def.h * chR;
+                    buildings.push({
+                        x: obj.x - cw / 2,
+                        y: obj.y - ch,
+                        w: cw, h: ch,
+                        label: obj.key
+                    });
+                }
+            }
+        }
+
+        function toggleEditMode() {
+            editMode = !editMode;
+            editHud.style.display = editMode ? 'block' : 'none';
+            if (!editMode) {
+                selectedIndex = -1;
+                isDragging = false;
+                panActive = false;
+                panStart = null;
+                canvas.style.cursor = 'default';
+                // 잔여 키 누름 클리어 (편집 중 눌렀던 키로 캐릭터가 갑자기 이동하는 것 방지)
+                for (const k in keys) delete keys[k];
+                // 충돌 박스 재계산 (이동/삭제된 오브젝트 반영)
+                rebuildBuildings();
+                // 진입 zone 재초기화 (현 위치 기준 즉시 팝업 방지)
+                activeZoneKey = null;
+                for (const obj of objects) {
+                    const def = objectDefs[obj.key];
+                    if (!def.interaction) continue;
+                    if (Math.hypot(player.x - obj.x, player.y - obj.y) < INTERACTION_RADIUS) {
+                        activeZoneKey = obj.key;
+                        break;
+                    }
+                }
+            } else {
+                canvas.style.cursor = 'crosshair';
+            }
+            updateEditHUD();
+        }
+
+        function exportObjects() {
+            const lines = objects.map(o =>
+                `    { key: '${o.key}', x: ${Math.round(o.x)}, y: ${Math.round(o.y)} },`
+            );
+            const code = `const objects = [\n${lines.join('\n')}\n];`;
+            console.log('=== objects[] (copy-paste below) ===');
+            console.log(code);
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(code).then(
+                    () => console.log('[✓ Copied to clipboard]'),
+                    () => console.log('[✗ Clipboard failed — copy from console manually]')
+                );
+            } else {
+                console.log('[i] clipboard API 사용 불가 — 콘솔에서 직접 복사하세요');
+            }
+        }
+
+        // === 키 이벤트 ===
+        window.addEventListener('keydown', (e) => {
+            if (popupOpen) return; // 팝업 떠 있을 때는 ESC만(다른 핸들러) 작동
+
+            // E 키: 편집 모드 토글 (한글 IME 안전을 위해 e.code 사용)
+            if (e.code === 'KeyE') {
+                toggleEditMode();
+                e.preventDefault();
+                return;
+            }
+            if (!editMode) return;
+
+            // S 키: objects[] 출력
+            if (e.code === 'KeyS') {
+                exportObjects();
+                e.preventDefault();
+                return;
+            }
+            // Delete/Backspace: 선택 오브젝트 제거
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (selectedIndex >= 0) {
+                    const removed = objects.splice(selectedIndex, 1)[0];
+                    console.log(`[EDIT] Removed: ${removed.key} (${removed.x}, ${removed.y})`);
+                    selectedIndex = -1;
+                    updateEditHUD();
+                }
+                e.preventDefault();
+                return;
+            }
+            // 방향키: 선택 있으면 미세 조정, 없으면 카메라 이동
+            if (/^Arrow/.test(e.key)) {
+                const step = e.shiftKey ? 10 : 1;
+                if (selectedIndex >= 0) {
+                    const obj = objects[selectedIndex];
+                    if (e.key === 'ArrowLeft')  obj.x -= step;
+                    if (e.key === 'ArrowRight') obj.x += step;
+                    if (e.key === 'ArrowUp')    obj.y -= step;
+                    if (e.key === 'ArrowDown')  obj.y += step;
+                    updateEditHUD();
+                } else {
+                    const camStep = e.shiftKey ? 100 : 30;
+                    if (e.key === 'ArrowLeft')  camera.x -= camStep;
+                    if (e.key === 'ArrowRight') camera.x += camStep;
+                    if (e.key === 'ArrowUp')    camera.y -= camStep;
+                    if (e.key === 'ArrowDown')  camera.y += camStep;
+                }
+                e.preventDefault();
+            }
+        });
+
+        // === 마우스 이벤트 ===
+        canvas.addEventListener('contextmenu', (e) => {
+            if (editMode) e.preventDefault(); // 편집 모드에서 우클릭 = 카메라 패닝
+        });
+        canvas.addEventListener('mousedown', (e) => {
+            if (!editMode) return;
+            // 우클릭: 카메라 패닝 시작
+            if (e.button === 2) {
+                panActive = true;
+                panStart = { mouseX: e.clientX, mouseY: e.clientY, camX: camera.x, camY: camera.y };
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+            if (e.button !== 0) return;
+            // 좌클릭: 오브젝트 선택 / 드래그 시작
+            const { x: wx, y: wy } = screenToWorld(e.clientX, e.clientY);
+            const idx = pickObjectAt(wx, wy);
+            if (idx >= 0) {
+                selectedIndex = idx;
+                isDragging = true;
+                dragOffsetX = wx - objects[idx].x;
+                dragOffsetY = wy - objects[idx].y;
+                canvas.style.cursor = 'grabbing';
+            } else {
+                selectedIndex = -1;
+            }
+            updateEditHUD();
+        });
+        canvas.addEventListener('mousemove', (e) => {
+            // 카메라 패닝 (우클릭 드래그)
+            if (panActive && panStart) {
+                camera.x = panStart.camX - (e.clientX - panStart.mouseX);
+                camera.y = panStart.camY - (e.clientY - panStart.mouseY);
+                return;
+            }
+            if (!editMode) return;
+            const { x: wx, y: wy } = screenToWorld(e.clientX, e.clientY);
+            if (isDragging && selectedIndex >= 0) {
+                objects[selectedIndex].x = Math.round(wx - dragOffsetX);
+                objects[selectedIndex].y = Math.round(wy - dragOffsetY);
+                updateEditHUD();
+            } else {
+                // 호버 cursor 피드백
+                const hoverIdx = pickObjectAt(wx, wy);
+                canvas.style.cursor = hoverIdx >= 0 ? 'grab' : 'crosshair';
+            }
+            if (editMouseEl) editMouseEl.innerText = `${Math.round(wx)}, ${Math.round(wy)}`;
+        });
+        window.addEventListener('mouseup', (e) => {
+            if (e.button === 2 && panActive) {
+                panActive = false;
+                panStart = null;
+                canvas.style.cursor = editMode ? 'crosshair' : 'default';
+            }
+            if (e.button === 0) {
+                isDragging = false;
+                if (editMode) canvas.style.cursor = 'crosshair';
+            }
+        });
 
         // 게임 루프
         function gameLoop() {

@@ -508,8 +508,8 @@
         let frameCount = 0;
 
         // === 로딩 진행 추적 ===
-        // playerImg(1) + bgImg(1) + botImgs(20) + objectDefs(26) = 48
-        const _TOTAL_IMAGES = 48;
+        // playerImg(1) + bgImg(1) + botImgs(20) + objectDefs(27) = 49
+        const _TOTAL_IMAGES = 49;
         let _loadedCount = 0;
         function _onImgLoad() {
             _loadedCount++;
@@ -586,7 +586,8 @@
             flowers:       { src: '23_flowers.png',              w: 220, h: 180, collideRatio: [0,    0   ] },
             map_sign:      { src: '24_map.png',                  w: 240, h: 280, collideRatio: [0,    0   ] },
             arrow_sign:    { src: '25_arrow.png',                w: 200, h: 250, collideRatio: [0,    0   ] },
-            sakura:        { src: '26_sakura.png',               w: 380, h: 380, collideRatio: [0.25, 0.25] }
+            sakura:        { src: '26_sakura.png',               w: 380, h: 380, collideRatio: [0.25, 0.25] },
+            minigame:      { src: '27_minigame.png',             w: 420, h: 480, collideRatio: [0.55, 0.25] }
         };
         // 이미지 프리로드
         for (const k in objectDefs) {
@@ -599,7 +600,7 @@
         // === localStorage 자동 저장 키 ===
         // 편집 모드에서 옮긴 오브젝트 위치는 브라우저에 자동 저장되어 새로고침해도 유지됩니다.
         // R 키로 리셋, 코드 변경 시 v 번호 올리면 stale 저장 무시.
-        const STORAGE_KEY = 'cube_town_object_positions_v1';
+        const STORAGE_KEY = 'cube_town_object_positions_v2'; // v2: 27_minigame 오브젝트 추가
 
         // 저장된 위치 불러오기 (없거나 손상이면 null)
         // scale은 옵션 (없으면 1.0). 코드에 신규 오브젝트 추가 시 마이그레이션 (사용자 변경 보존)
@@ -712,6 +713,7 @@
             { key: 'red_light', x: 2650, y: 2400 },
             { key: 'red_light', x: 2150, y: 2700 },
             { key: 'torii', x: 200, y: 2400 },
+            { key: 'minigame', x: 2280, y: 530, scale: 1.4 },
         ];
         // localStorage가 우선, 없거나 손상이면 DEFAULT_OBJECTS의 deep copy 사용
         const objects = loadObjectsFromStorage() || DEFAULT_OBJECTS.map(o => ({ ...o }));

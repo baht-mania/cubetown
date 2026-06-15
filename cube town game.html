@@ -1138,16 +1138,19 @@
         }
 
         function exportObjects() {
-            const lines = objects.map(o =>
-                `    { key: '${o.key}', x: ${Math.round(o.x)}, y: ${Math.round(o.y)} },`
-            );
-            const code = `const objects = [\n${lines.join('\n')}\n];`;
-            console.log('=== objects[] (copy-paste below) ===');
+            const lines = objects.map(o => {
+                const fields = [`key: '${o.key}'`, `x: ${Math.round(o.x)}`, `y: ${Math.round(o.y)}`];
+                if (o.scale && o.scale !== 1) fields.push(`scale: ${Math.round(o.scale * 100) / 100}`);
+                return `    { ${fields.join(', ')} },`;
+            });
+            // 코드에 그대로 붙여넣을 수 있게 DEFAULT_OBJECTS 변수명 사용 + scale 포함
+            const code = `const DEFAULT_OBJECTS = [\n${lines.join('\n')}\n];`;
+            console.log('=== DEFAULT_OBJECTS (코드의 같은 변수 자리에 그대로 붙여넣기) ===');
             console.log(code);
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(code).then(
-                    () => console.log('[✓ Copied to clipboard]'),
-                    () => console.log('[✗ Clipboard failed — copy from console manually]')
+                    () => console.log('[✓ 클립보드 복사됨 → Cmd/Ctrl+V로 붙여넣기]'),
+                    () => console.log('[✗ 클립보드 실패 — 콘솔에서 직접 복사하세요]')
                 );
             } else {
                 console.log('[i] clipboard API 사용 불가 — 콘솔에서 직접 복사하세요');

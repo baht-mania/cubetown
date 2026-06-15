@@ -945,6 +945,18 @@
             }
             ctx.shadowBlur = 0; // 큐브 글로우 잔여 초기화
 
+            // 편집 모드: 모든 충돌 박스 시각화 (디버그 — 빨간 점선)
+            // 사용자가 박스 위치/크기를 즉시 확인 가능. PNG와 박스 정합 점검용.
+            if (editMode) {
+                ctx.strokeStyle = 'rgba(239, 68, 68, 0.75)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([4, 4]);
+                for (const b of buildings) {
+                    ctx.strokeRect(b.x, b.y, b.w, b.h);
+                }
+                ctx.setLineDash([]);
+            }
+
             // 편집 모드: 선택 오브젝트 외곽선 + 발 위치 마커 (scale 반영)
             if (editMode && selectedIndex >= 0 && objects[selectedIndex]) {
                 const obj = objects[selectedIndex];
@@ -997,8 +1009,10 @@
                 console.warn('[Storage] 저장 실패:', e.message);
             }
         }
-        // 변경 발생 시 호출. 500ms 후 한 번에 저장 (debounce)
+        // 변경 발생 시 호출. 즉시 충돌 박스 동기화 + 500ms 후 localStorage 저장 (debounce)
         function markDirty() {
+            // 충돌 박스를 즉시 새 위치로 재계산 → 편집 종료 안 해도 즉시 충돌 반영
+            rebuildBuildings();
             if (saveTimer) clearTimeout(saveTimer);
             saveTimer = setTimeout(() => {
                 saveObjects();

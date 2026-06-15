@@ -162,12 +162,14 @@
         <p style="margin:3px 0;"><b>우클릭+드래그</b>: 카메라 이동</p>
         <p style="margin:3px 0;"><b>방향키</b>: 1px (Shift: 10px)</p>
         <p style="margin:3px 0;"><b>Delete</b>: 선택 오브젝트 제거</p>
-        <p style="margin:3px 0;"><b>S</b>: objects[] 콘솔+클립보드 출력</p>
+        <p style="margin:3px 0;"><b>R</b>: 기본 위치로 리셋</p>
+        <p style="margin:3px 0;"><b>S</b>: objects[] 콘솔+클립보드 출력 (영구 박을 때)</p>
         <div id="edit-selected" style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15); display:none;">
             <p style="margin:3px 0;"><b style="color:#f59e0b;">선택:</b> <span id="edit-key"></span></p>
             <p style="margin:3px 0;"><b style="color:#f59e0b;">좌표:</b> (<span id="edit-x"></span>, <span id="edit-y"></span>)</p>
         </div>
-        <p style="margin-top:10px; color:#94a3b8; font-size:11px;">cursor: <span id="edit-mouse">0, 0</span></p>
+        <p style="margin-top:10px; color:#10b981; font-size:11px;">자동 저장: <span id="save-time">대기 중</span></p>
+        <p style="margin:3px 0; color:#94a3b8; font-size:11px;">cursor: <span id="edit-mouse">0, 0</span></p>
     </div>
 
     <script>
@@ -297,13 +299,44 @@
             objectDefs[k].img = img;
         }
 
+        // === localStorage 자동 저장 키 ===
+        // 편집 모드에서 옮긴 오브젝트 위치는 브라우저에 자동 저장되어 새로고침해도 유지됩니다.
+        // R 키로 리셋, 코드 변경 시 v 번호 올리면 stale 저장 무시.
+        const STORAGE_KEY = 'cube_town_object_positions_v1';
+
+        // 저장된 위치 불러오기 (없거나 손상이면 null)
+        function loadObjectsFromStorage() {
+            try {
+                const json = localStorage.getItem(STORAGE_KEY);
+                if (!json) return null;
+                const data = JSON.parse(json);
+                if (!Array.isArray(data.objects)) return null;
+                // 검증: 모든 key가 현재 objectDefs에 존재하고 좌표가 유효한지
+                const valid = data.objects.every(o =>
+                    typeof o.key === 'string' && objectDefs[o.key] &&
+                    typeof o.x === 'number' && typeof o.y === 'number' &&
+                    isFinite(o.x) && isFinite(o.y)
+                );
+                if (!valid) {
+                    console.warn('[Storage] 저장 데이터 검증 실패 → 기본 위치 사용');
+                    return null;
+                }
+                console.log(`[Storage] 저장된 ${data.objects.length}개 오브젝트 위치 로드됨 (${data.savedAt || '시간 미상'})`);
+                return data.objects.map(o => ({ key: o.key, x: o.x, y: o.y }));
+            } catch (e) {
+                console.warn('[Storage] 로드 실패:', e.message);
+                return null;
+            }
+        }
+
         // 오브젝트 인스턴스 배치 — (x, y)는 오브젝트의 발(footer) 좌표
         // === 1~9: 맵 3×3 그리드 (각 셀 1000×1000, 셀 중심에 메인 오브젝트) ===
         // [1 한옥문]    [2 여행센터]   [3 한옥상점]
         // [4 라멘집]    [7 빨간 다리]  [5 야시장]
         // [6 분수]      [8 갤러리]     [9 토리이]
         // 10~26: 나머지 미니어처/상점/소품은 셀 사이 공간에 자연 배치
-        const objects = [
+        // DEFAULT_OBJECTS는 코드의 권위(reset 기준). objects는 localStorage가 우선.
+        const DEFAULT_OBJECTS = [
             // === 메인 1~9 (3×3 그리드 — 각 셀 중심) ===
             { key: 'hanok_gate',      x: 500,  y: 500  }, // 1 좌상
             { key: 'tourism_center',  x: 1500, y: 500  }, // 2 상단 중앙
@@ -355,6 +388,8 @@
             { key: 'map_sign',        x: 800,  y: 300  }, // 입구(1) 옆
             { key: 'arrow_sign',      x: 1500, y: 1050 }  // 그리드 갈림길
         ];
+        // localStorage가 우선, 없거나 손상이면 DEFAULT_OBJECTS의 deep copy 사용
+        const objects = loadObjectsFromStorage() || DEFAULT_OBJECTS.map(o => ({ ...o }));
 
         // 키 입력 상태
         const keys = {};
@@ -716,6 +751,53 @@
         let dragOffsetX = 0, dragOffsetY = 0;
         let panActive = false;
         let panStart = null;
+        let saveTimer = null; // localStorage debounce 타이머
+
+        // === localStorage 저장 / 리셋 ===
+        function saveObjects() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    version: 1,
+                    savedAt: new Date().toISOString(),
+                    objects: objects.map(o => ({
+                        key: o.key,
+                        x: Math.round(o.x),
+                        y: Math.round(o.y)
+                    }))
+                }));
+                updateSaveTime();
+            } catch (e) {
+                console.warn('[Storage] 저장 실패:', e.message);
+            }
+        }
+        // 변경 발생 시 호출. 500ms 후 한 번에 저장 (debounce)
+        function markDirty() {
+            if (saveTimer) clearTimeout(saveTimer);
+            saveTimer = setTimeout(() => {
+                saveObjects();
+                saveTimer = null;
+            }, 500);
+        }
+        function updateSaveTime() {
+            const el = document.getElementById('save-time');
+            if (!el) return;
+            const n = new Date();
+            const pad = v => v.toString().padStart(2, '0');
+            el.innerText = `${pad(n.getHours())}:${pad(n.getMinutes())}:${pad(n.getSeconds())} ✓`;
+        }
+        // R 키: 기본 위치로 리셋
+        function resetObjectsToDefault() {
+            if (!confirm('오브젝트를 기본 위치로 리셋하시겠습니까?\n현재 옮긴 위치/삭제 내역이 모두 사라집니다.')) return;
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+            objects.length = 0;
+            for (const o of DEFAULT_OBJECTS) objects.push({ ...o });
+            selectedIndex = -1;
+            rebuildBuildings();
+            updateEditHUD();
+            const el = document.getElementById('save-time');
+            if (el) el.innerText = '기본 위치로 리셋됨';
+            console.log('[Storage] 기본 위치로 리셋 완료');
+        }
 
         const editHud     = document.getElementById('edit-mode-hud');
         const editSelDom  = document.getElementById('edit-selected');
@@ -840,6 +922,12 @@
                 e.preventDefault();
                 return;
             }
+            // R 키: 기본 위치 리셋
+            if (e.code === 'KeyR') {
+                resetObjectsToDefault();
+                e.preventDefault();
+                return;
+            }
             // Delete/Backspace: 선택 오브젝트 제거
             if (e.key === 'Delete' || e.key === 'Backspace') {
                 if (selectedIndex >= 0) {
@@ -847,6 +935,7 @@
                     console.log(`[EDIT] Removed: ${removed.key} (${removed.x}, ${removed.y})`);
                     selectedIndex = -1;
                     updateEditHUD();
+                    markDirty();
                 }
                 e.preventDefault();
                 return;
@@ -861,6 +950,7 @@
                     if (e.key === 'ArrowUp')    obj.y -= step;
                     if (e.key === 'ArrowDown')  obj.y += step;
                     updateEditHUD();
+                    markDirty();
                 } else {
                     const camStep = e.shiftKey ? 100 : 30;
                     if (e.key === 'ArrowLeft')  camera.x -= camStep;
@@ -927,8 +1017,12 @@
                 canvas.style.cursor = editMode ? 'crosshair' : 'default';
             }
             if (e.button === 0) {
+                const wasDragging = isDragging;
                 isDragging = false;
-                if (editMode) canvas.style.cursor = 'crosshair';
+                if (editMode) {
+                    canvas.style.cursor = 'crosshair';
+                    if (wasDragging) markDirty(); // 드래그로 위치 변경 → 저장 예약
+                }
             }
         });
 

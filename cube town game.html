@@ -184,6 +184,84 @@
         .kanban-column.col-address .kanban-card     { border-left-color: #f59e0b; }
         .kanban-column.col-ceo     .kanban-col-title { color: #10b981; }
         .kanban-column.col-ceo     .kanban-card     { border-left-color: #10b981; }
+
+        /* === 미니게임 모달 === */
+        #minigame-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1100;
+            animation: popupFadeIn 0.2s ease-out;
+        }
+        #minigame-overlay.show { display: flex; }
+        #minigame-frame {
+            background: rgba(15, 23, 42, 0.98);
+            border: 2px solid #38bdf8;
+            border-radius: 16px;
+            width: min(640px, 90vw);
+            height: min(520px, 80vh);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 30px 80px rgba(56, 189, 248, 0.3);
+            animation: popupPop 0.25s cubic-bezier(.34, 1.56, .64, 1);
+        }
+        #minigame-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #minigame-header h2 {
+            margin: 0;
+            color: #38bdf8;
+            font-size: 18px;
+            letter-spacing: 0.1em;
+            font-family: monospace;
+        }
+        #minigame-close {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: #cbd5e1;
+            font-size: 22px;
+            line-height: 1;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        #minigame-close:hover { background: rgba(255, 255, 255, 0.18); }
+        #minigame-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        #minigame-placeholder {
+            color: #94a3b8;
+            text-align: center;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+        #minigame-placeholder strong {
+            color: #f1f5f9;
+            font-size: 16px;
+            display: block;
+            margin-bottom: 10px;
+        }
+        #minigame-placeholder code {
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -233,6 +311,24 @@
             <div class="popup-buttons">
                 <button id="popup-yes">응. 이동할게</button>
                 <button id="popup-no">아니, 다른 곳으로 갈게</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 미니게임 모달 (placeholder — 사용자 미니게임 코드는 window.startMiniGame()으로 hook) -->
+    <div id="minigame-overlay">
+        <div id="minigame-frame">
+            <div id="minigame-header">
+                <h2>MINI GAME ZONE</h2>
+                <button id="minigame-close" title="닫기">×</button>
+            </div>
+            <div id="minigame-content">
+                <div id="minigame-placeholder">
+                    <strong>미니게임 준비 중</strong>
+                    별도 미니게임 코드를 <code>window.startMiniGame(onComplete)</code> 함수로 등록하면<br>
+                    이 자리에 자동 연결됩니다.<br><br>
+                    60초 후 자동 종료, 또는 × 버튼으로 즉시 닫기
+                </div>
             </div>
         </div>
     </div>
@@ -577,22 +673,94 @@
 
         // 장애물 (충돌 박스) - objects[] 의 collideRatio 값을 기반으로 자동 생성.
         // 발(footer) 좌표 기준 발 footprint만 충돌 → 큰 건물도 윗부분(지붕/탑신)은 통과 가능 = 시각적 자연
-        // 충돌 시스템: 인스턴스별 obj.collideRadius (기본 COLLIDE_RADIUS=30, 편집 모드 , / . 키로 조정)
-        // obj.collideRadius = 0 이면 통과 가능 (충돌 박스 미생성)
+        // 충돌 시스템: 사용자 요청으로 자동 생성 비활성화.
+        // 향후 수동 좌표 입력으로 충돌 영역 설정 → MANUAL_COLLISION_BOXES에 push.
+        // 다시 자동 생성하려면 COLLISION_AUTO_GENERATE = true.
+        const COLLISION_AUTO_GENERATE = false;
         const COLLIDE_RADIUS = 30;
+        const MANUAL_COLLISION_BOXES = [
+            // 향후 좌표 입력 예시:
+            // { x: 1000, y: 500, w: 200, h: 100, label: 'custom-1' },
+        ];
+
         const buildings = [];
-        for (const obj of objects) {
-            const def = objectDefs[obj.key];
-            if (def.noCollide) continue;
-            const r = obj.collideRadius ?? COLLIDE_RADIUS;
-            if (r <= 0) continue;
-            buildings.push({
-                x: obj.x - r,
-                y: obj.y - r,
-                w: r * 2,
-                h: r * 2,
-                label: obj.key
-            });
+        if (COLLISION_AUTO_GENERATE) {
+            for (const obj of objects) {
+                const def = objectDefs[obj.key];
+                if (def.noCollide) continue;
+                const r = obj.collideRadius ?? COLLIDE_RADIUS;
+                if (r <= 0) continue;
+                buildings.push({
+                    x: obj.x - r,
+                    y: obj.y - r,
+                    w: r * 2,
+                    h: r * 2,
+                    label: obj.key
+                });
+            }
+        }
+        for (const b of MANUAL_COLLISION_BOXES) {
+            buildings.push({ ...b });
+        }
+
+        // === 미니게임존 ===
+        // 캐릭터가 이 원형 영역 안에 들어오면 자동으로 미니게임 트리거.
+        // 사용자 미니게임 코드: window.startMiniGame(onComplete) 함수를 정의하면 우리 코드가 자동 호출.
+        // 미정의 시 placeholder 모달 표시 (60초 카운트 + 닫기 버튼).
+        const MINI_GAME_ZONE = {
+            x: 2280,       // 이벤트 광장 (분수 옆) — 우상단
+            y: 600,
+            radius: 200,   // 반경 (캐릭터가 이 안에 들어오면 트리거)
+            label: 'MINI GAME ZONE'
+        };
+        let miniGameActive = false;
+        let miniGameInZone = false; // 한 번 트리거 후 zone 밖으로 나갈 때까지 재트리거 X
+
+        function triggerMiniGame() {
+            if (miniGameActive) return;
+            miniGameActive = true;
+            if (typeof window.startMiniGame === 'function') {
+                window.startMiniGame(onMiniGameEnd);
+            } else {
+                showMiniGamePlaceholder();
+            }
+        }
+        function onMiniGameEnd() {
+            miniGameActive = false;
+            hideMiniGamePlaceholder();
+        }
+        function showMiniGamePlaceholder() {
+            const overlay = document.getElementById('minigame-overlay');
+            if (overlay) overlay.classList.add('show');
+            // 60초 자동 종료 타이머
+            const timer = setTimeout(() => {
+                if (miniGameActive) onMiniGameEnd();
+            }, 60000);
+            const closeBtn = document.getElementById('minigame-close');
+            if (closeBtn) {
+                closeBtn.onclick = () => {
+                    clearTimeout(timer);
+                    onMiniGameEnd();
+                };
+            }
+        }
+        function hideMiniGamePlaceholder() {
+            const overlay = document.getElementById('minigame-overlay');
+            if (overlay) overlay.classList.remove('show');
+        }
+
+        function checkMiniGameZone() {
+            if (miniGameActive) return;
+            const dx = player.x - MINI_GAME_ZONE.x;
+            const dy = player.y - MINI_GAME_ZONE.y;
+            const dist = Math.hypot(dx, dy);
+            const inside = dist < MINI_GAME_ZONE.radius;
+            if (inside && !miniGameInZone) {
+                miniGameInZone = true;
+                triggerMiniGame();
+            } else if (!inside) {
+                miniGameInZone = false;
+            }
         }
 
         // 봇 (NPC) 배열 및 생성 로직
@@ -740,6 +908,8 @@
             if (popupOpen) return;
             // 편집 모드: 게임 로직 전체 일시정지. 카메라는 마우스 패닝/화살표로 자유 이동
             if (editMode) return;
+            // 미니게임 활성 중에도 일시정지
+            if (miniGameActive) return;
 
             // --- 플레이어 이동 로직 ---
             let dx = 0;
@@ -835,6 +1005,8 @@
 
             // 1~9 메인 오브젝트 진입 검사
             checkInteractionZones();
+            // 미니게임존 진입 검사
+            checkMiniGameZone();
         }
 
         // 오브젝트(건물/소품) 그리는 함수 — (x, y)는 발(footer) 위치
@@ -1014,6 +1186,39 @@
             // 건물 시각 박스는 배경 이미지에 이미 그려져 있으므로 제거.
             // buildings[] 데이터는 충돌 판정용으로만 유지 (checkCollision, 큐브 스폰 회피).
 
+            // === 미니게임존 시각화 (펄스 글로우 + 텍스트) ===
+            {
+                const z = MINI_GAME_ZONE;
+                const pulse = (Math.sin(frameCount * 0.05) + 1) * 0.5; // 0~1
+                // 글로우 채움
+                ctx.fillStyle = `rgba(56, 189, 248, ${0.08 + pulse * 0.10})`;
+                ctx.beginPath();
+                ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2);
+                ctx.fill();
+                // 점선 외곽
+                ctx.strokeStyle = `rgba(56, 189, 248, ${0.45 + pulse * 0.35})`;
+                ctx.lineWidth = 5;
+                ctx.setLineDash([14, 10]);
+                ctx.lineDashOffset = -frameCount * 0.5;
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.lineDashOffset = 0;
+                // 텍스트 (임시 — 추후 5×7 비트맵 도트 폰트로 교체 예정)
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.fillRect(z.x - 170, z.y - 28, 340, 56);
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(z.x - 170, z.y - 28, 340, 56);
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = 'bold 28px monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('MINI GAME ZONE', z.x, z.y - 5);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.font = '12px sans-serif';
+                ctx.fillText('걸어 들어가면 자동 시작', z.x, z.y + 17);
+            }
+
             // === y-sort 드로어블: 오브젝트 + 큐브 + 봇 + 플레이어를 y 좌표 기준으로 정렬 후 그리기 ===
             // 화면 아래쪽(y가 큰)일수록 앞에 그려져서 자연스러운 톱뷰 깊이감 형성.
             // 단, 캐릭터(봇 + 플레이어)는 Z_CHARACTER 오프셋으로 항상 모든 오브젝트 위 (사용자 요청).
@@ -1177,21 +1382,27 @@
             }
         }
 
-        // 편집 종료 + markDirty 시 충돌 박스 재계산. 인스턴스별 collideRadius 반영
+        // 편집 종료 + markDirty 시 충돌 박스 재계산
+        // COLLISION_AUTO_GENERATE=false면 자동 생성 스킵, MANUAL_COLLISION_BOXES만 적용
         function rebuildBuildings() {
             buildings.length = 0;
-            for (const obj of objects) {
-                const def = objectDefs[obj.key];
-                if (def.noCollide) continue;
-                const r = obj.collideRadius ?? COLLIDE_RADIUS;
-                if (r <= 0) continue;
-                buildings.push({
-                    x: obj.x - r,
-                    y: obj.y - r,
-                    w: r * 2,
-                    h: r * 2,
-                    label: obj.key
-                });
+            if (COLLISION_AUTO_GENERATE) {
+                for (const obj of objects) {
+                    const def = objectDefs[obj.key];
+                    if (def.noCollide) continue;
+                    const r = obj.collideRadius ?? COLLIDE_RADIUS;
+                    if (r <= 0) continue;
+                    buildings.push({
+                        x: obj.x - r,
+                        y: obj.y - r,
+                        w: r * 2,
+                        h: r * 2,
+                        label: obj.key
+                    });
+                }
+            }
+            for (const b of MANUAL_COLLISION_BOXES) {
+                buildings.push({ ...b });
             }
         }
 

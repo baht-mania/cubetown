@@ -147,7 +147,7 @@
             { key: 'hanok_gate',      x: 480,  y: 600  }, // 좌상 입구
             { key: 'tourism_center',  x: 1280, y: 550  }, // 상단 중앙
             { key: 'fountain',        x: 2280, y: 600  }, // 우상 이벤트 광장 중심
-            { key: 'red_bridge',      x: 1450, y: 1350 }, // 정중앙 시냇물 위
+            { key: 'red_bridge',      x: 1450, y: 1500 }, // 정중앙 시냇물 위 (실측 보정)
             { key: 'modern_gallery',  x: 1200, y: 2400 }, // 하단 중앙 전시관
             { key: 'torii',           x: 2200, y: 1500 }, // 우중 유저 공간 입구
 
@@ -163,7 +163,7 @@
             { key: 'statue_liberty',  x: 650,  y: 2500 }, // 모래사장 액센트
             { key: 'big_ben',         x: 2520, y: 1900 }, // 우중 액센트
             { key: 'eiffel',          x: 2400, y: 2650 }, // 잔디 정원 액센트
-            { key: 'moai',            x: 300,  y: 2780 }, // 모래사장 끝
+            { key: 'moai',            x: 350,  y: 2650 }, // 모래사장 끝 (물에서 떨어뜨림)
 
             // --- 작은 상점 (분산) ---
             { key: 'boulangerie',     x: 2100, y: 2350 }, // 잔디 정원
@@ -389,10 +389,12 @@
             if (!def.img.complete || !def.img.naturalWidth) return;
             const { x, y } = obj;
             const { w, h } = def;
-            // 그림자 (발 footprint 기준 elliptical)
-            ctx.fillStyle = 'rgba(0,0,0,0.4)';
+            // 그림자 강화: 충돌 footprint와 매치되는 크기로 더 진하게 — "맵에 박힌" 느낌
+            //   가로 = w * 0.42 (이전 0.28 → 50% 확대), 세로 = w * 0.16 (이전 0.11 → 45% 확대)
+            //   alpha = 0.55 (이전 0.4 → 진하게)
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
             ctx.beginPath();
-            ctx.ellipse(x, y, w * 0.28, w * 0.11, 0, 0, Math.PI * 2);
+            ctx.ellipse(x, y, w * 0.42, w * 0.16, 0, 0, Math.PI * 2);
             ctx.fill();
             // 본체 (이미지 하단이 발에 닿게)
             ctx.drawImage(def.img, x - w/2, y - h, w, h);

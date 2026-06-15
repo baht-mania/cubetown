@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CubeTown</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Apple SD Gothic Neo","Noto Sans KR",Arial,sans-serif;background:#0b1220;color:#fff;overflow:hidden}
+button,input{font:inherit}
+#login{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:radial-gradient(circle at 28% 18%,#3b82f6,#0b1220 46%,#050816)}
+.login-card{width:min(470px,92vw);background:#fff;color:#172033;border-radius:26px;padding:28px;box-shadow:0 30px 100px rgba(0,0,0,.45)}
+.logo{display:flex;gap:12px;align-items:center;margin-bottom:18px}
+.mark{width:48px;height:48px;border-radius:16px;background:linear-gradient(135deg,#2563eb,#8b5cf6);display:grid;place-items:center;color:white;font-weight:950}
+h1,h2,h3,p{margin:0} h1{font-size:30px}.muted{color:#667085;font-size:14px;line-height:1.65}
+.notice{background:#f3f6ff;color:#233b76;border:1px solid #c8d7ff;border-radius:16px;padding:13px;line-height:1.6;font-size:14px;margin:14px 0}
+label{display:block;margin:14px 0 7px;color:#667085;font-size:13px;font-weight:800}
+input{width:100%;padding:12px;border-radius:13px;border:1px solid #e5e7eb}
+.btn{border:0;border-radius:13px;padding:12px 14px;background:#2563eb;color:#fff;font-weight:900;cursor:pointer;text-decoration:none;display:inline-block}
+.btn.secondary{background:#eef2f7;color:#111827}.btn.danger{background:#dc2626}.btn.purple{background:#7c3aed}.btn.green{background:#16a34a}.btn.small{padding:8px 10px;border-radius:10px;font-size:12px}
+.accounts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.chip{border:1px solid #e5e7eb;border-radius:13px;padding:10px;background:#fff;cursor:pointer}.chip b{display:block;font-size:13px}.chip span{font-size:12px;color:#667085}
+#game{display:block;width:100vw;height:100vh;background:#8bd47c}
+.top{position:fixed;left:14px;right:14px;top:12px;z-index:10;display:flex;justify-content:space-between;align-items:center;gap:10px;background:rgba(15,23,42,.84);border:1px solid rgba(255,255,255,.16);backdrop-filter:blur(10px);border-radius:18px;padding:12px 14px}
+.brand{display:flex;align-items:center;gap:10px}.brand b{display:block}.brand span{display:block;color:#cbd5e1;font-size:12px}
+.hud{display:flex;gap:8px;flex-wrap:wrap}.pill{border-radius:999px;padding:7px 10px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.14);font-size:12px;font-weight:800}
+.help{position:fixed;left:14px;bottom:14px;z-index:10;max-width:680px;background:rgba(15,23,42,.84);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:12px 14px;color:#e2e8f0;font-size:13px;line-height:1.55}
+.chat{position:fixed;right:14px;bottom:14px;z-index:11;width:min(380px,calc(100vw - 28px));background:rgba(15,23,42,.86);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:12px;color:#e2e8f0;max-height:200px;overflow:hidden}
+.chat h3{font-size:13px;margin-bottom:8px}.chat p{font-size:12px;margin:5px 0;color:#dbeafe}
+.minimap{position:fixed;right:14px;top:92px;z-index:11;width:190px;height:130px;background:rgba(15,23,42,.86);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:10px}
+.minimap h3{font-size:12px;margin:0 0 6px 0;color:#e2e8f0}
+#mini{width:170px;height:96px;background:rgba(255,255,255,.08);border-radius:10px}
+.hint{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:12;background:#fff;color:#111827;border-radius:999px;padding:10px 16px;box-shadow:0 14px 42px rgba(0,0,0,.35);font-weight:900;display:none}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.58);display:none;align-items:center;justify-content:center;z-index:30;padding:18px}
+.modal{width:min(980px,96vw);max-height:86vh;overflow:auto;background:#fff;color:#172033;border-radius:22px;box-shadow:0 30px 90px rgba(0,0,0,.45)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;padding:18px 20px;border-bottom:1px solid #e5e7eb}.modal-body{padding:20px}
+.close{border:0;background:#eef2f7;color:#111827;border-radius:12px;padding:9px 12px;font-weight:900;cursor:pointer}
+.grid{display:grid;gap:14px}.cols2{grid-template-columns:repeat(2,1fr)}.cols3{grid-template-columns:repeat(3,1fr)}.cols4{grid-template-columns:repeat(4,1fr)}
+.card{border:1px solid #e5e7eb;border-radius:16px;padding:16px;background:#fff}.soft{background:#f8fafc}.num{font-size:24px;font-weight:900;margin-top:6px}
+.badge{display:inline-block;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900;background:#eef2ff;color:#1f4fd8}.ok{background:#eaf7ee;color:#137333}.warn{background:#fff7e6;color:#b7791f}.lock{background:#fff0ee;color:#dc2626}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left}th{background:#f8fafc;color:#667085}
+.toast{position:fixed;right:18px;top:238px;z-index:80;background:#111827;color:#fff;padding:12px 14px;border-radius:14px;display:none;max-width:360px;line-height:1.45}
+@media(max-width:760px){.top{flex-direction:column;align-items:flex-start}.cols2,.cols3,.cols4{grid-template-columns:1fr}.chat,.minimap{display:none}.help{right:14px}}
+</style>
+</head>
+<body>
+<section id="login">
+ <div class="login-card">
+  <div class="logo"><div class="mark">CT</div><div><h1>CubeTown</h1><p class="muted">아바타 기반 디지털 커뮤니티 플랫폼</p></div></div>
+  <div class="notice">아이디와 비밀번호를 입력해 CubeTown에 입장하세요. 일부 기능은 인증 이용자만 사용할 수 있습니다.</div>
+  <label>아이디</label><input id="loginId" value="testuser">
+  <label>비밀번호</label><input id="loginPw" type="password" value="demo1234">
+  <button class="btn" style="width:100%;margin-top:16px" onclick="login()">CubeTown 입장</button>
+  <div class="accounts">
+   <div class="chip" onclick="fillLogin('testuser')"><b>일반 이용자</b><span>testuser / demo1234</span></div>
+   <div class="chip" onclick="fillLogin('admin')"><b>운영자</b><span>admin / demo1234</span></div>
+  </div>
+ </div>
+</section>
+
+<canvas id="game" width="1280" height="760"></canvas>
+<div class="top"><div class="brand"><div class="mark" style="width:40px;height:40px;border-radius:13px">CT</div><div><b>CubeTown</b><span>차세대 디지털 커뮤니티 플랫폼</span></div></div><div class="hud"><div class="pill">유저: <span id="hudUser">testuser</span></div><div class="pill">보유 큐브: <span id="hudCube">12,800 Cube</span></div><div class="pill">인증상태: <span id="hudAuth">미인증</span></div></div></div>
+<div class="help">조작: 방향키 / WASD 이동. 넓은 마을을 이동하면 화면이 캐릭터를 따라갑니다.<br>건물·개인 공간·노점 근처에서 Enter 또는 클릭. 한국여행센터는 실제 공식 링크로 연결됩니다.</div>
+<div class="minimap"><h3>미니맵</h3><canvas id="mini" width="170" height="96"></canvas></div>
+<div id="hint" class="hint"></div>
+<div class="chat"><h3>마을 외침</h3><div id="chatLines"></div></div>
+<div id="toast" class="toast"></div>
+<div id="modalBg" class="modal-bg" onclick="bgClose(event)"><div class="modal"><div class="modal-head"><h2 id="modalTitle">제목</h2><button class="close" onclick="closeModal()">닫기</button></div><div id="modalBody" class="modal-body"></div></div></div>
+
+<script>
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');
+const mini=document.getElementById('mini'),mctx=mini.getContext('2d');
+const VIEW_W=canvas.width,VIEW_H=canvas.height;
+const WORLD_W=2600,WORLD_H=1800;
+const keys={};let currentUser='testuser',isAdmin=false,cubes=12800,authStatus='미인증',frame=0;
+let cam={x:0,y:0};
+const player={x:1280,y:900,w:30,h:40,speed:5,step:0,color:'#2563eb',hair:'#111827',name:'나'};
+const buildings=[
+{id:'travel',type:'building',name:'한국여행센터',x:260,y:220,w:260,h:160,color:'#0ea5e9',icon:'KOREA',desc:'쿠폰·여행정보·공식링크',zone:'한국여행존'},
+{id:'itemshop',type:'building',name:'아이템샵',x:1100,y:240,w:220,h:145,color:'#f59e0b',icon:'SHOP',desc:'아바타·공간 꾸미기',zone:'중앙광장'},
+{id:'board',type:'building',name:'게시판',x:1450,y:245,w:210,h:140,color:'#8b5cf6',icon:'BOARD',desc:'공지·이벤트',zone:'중앙광장'},
+{id:'auth',type:'building',name:'인증센터',x:1910,y:260,w:220,h:145,color:'#10b981',icon:'AUTH',desc:'이용자 인증',zone:'인증구역'},
+{id:'admin',type:'building',name:'운영센터',x:2140,y:1230,w:240,h:160,color:'#ef4444',icon:'ADMIN',desc:'운영자 전용',zone:'운영구역'},
+{id:'mypage',type:'building',name:'마이페이지',x:300,y:1280,w:220,h:150,color:'#38bdf8',icon:'MY',desc:'캐릭터·큐브·내 공간',zone:'개인구역'},
+{id:'event',type:'building',name:'이벤트 광장',x:1110,y:1320,w:250,h:160,color:'#ec4899',icon:'EVENT',desc:'이벤트·랭킹',zone:'이벤트구역'}];
+
+const shops=[
+{id:'shop1',type:'shop',name:'루나의 공간',x:690,y:650,w:100,h:100,color:'#f97316',shout:'신규 공간 오픈!'},
+{id:'shop2',type:'shop',name:'픽셀 스튜디오',x:840,y:650,w:100,h:100,color:'#22c55e',shout:'콘텐츠 전시중!'},
+{id:'shop3',type:'shop',name:'K-뷰티 노트',x:990,y:650,w:100,h:100,color:'#a855f7',shout:'한국 쇼핑 정보!'},
+{id:'shop4',type:'shop',name:'서울 산책',x:1140,y:650,w:100,h:100,color:'#06b6d4',shout:'성수동 코스 공개!'},
+{id:'shop5',type:'shop',name:'Cube Studio',x:1290,y:650,w:100,h:100,color:'#f43f5e',shout:'오늘의 추천 공간!'},
+{id:'shop6',type:'shop',name:'K-POP 라운지',x:1440,y:650,w:100,h:100,color:'#6366f1',shout:'공연 정보 모음!'},
+{id:'shop7',type:'shop',name:'명동 쇼핑노트',x:1590,y:650,w:100,h:100,color:'#14b8a6',shout:'쇼핑코스 공개!'},
+{id:'shop8',type:'shop',name:'홍대 플레이스',x:1740,y:650,w:100,h:100,color:'#e11d48',shout:'카페 정보 모음!'}
+];
+
+const stalls=[
+{id:'stall1',type:'stall',name:'민수의 노점',x:670,y:1040,text:'추천 콘텐츠 확인!'},
+{id:'stall2',type:'stall',name:'하나의 노점',x:830,y:1040,text:'한국 여행 쿠폰 모음!'},
+{id:'stall3',type:'stall',name:'타로의 노점',x:990,y:1040,text:'오늘의 여행 팁!'},
+{id:'stall4',type:'stall',name:'유나의 노점',x:1150,y:1040,text:'K-뷰티 정보!'},
+{id:'stall5',type:'stall',name:'Cube 안내소',x:1310,y:1040,text:'한국여행센터 오픈!'},
+{id:'stall6',type:'stall',name:'서울 가이드',x:1470,y:1040,text:'명동 쇼핑 코스!'},
+{id:'stall7',type:'stall',name:'성수 노트',x:1630,y:1040,text:'성수동 추천!'},
+{id:'stall8',type:'stall',name:'WOW 안내',x:1790,y:1040,text:'여행카드 확인!'}
+];
+
+const zones=[
+{name:'한국여행존',x:130,y:130,w:520,h:360,color:'rgba(14,165,233,.12)'},
+{name:'중앙광장',x:780,y:190,w:1020,h:390,color:'rgba(231,212,170,.55)'},
+{name:'개인공간거리',x:610,y:590,w:1330,h:260,color:'rgba(255,255,255,.10)'},
+{name:'노점거리',x:610,y:980,w:1330,h:210,color:'rgba(124,45,18,.10)'},
+{name:'이벤트구역',x:980,y:1240,w:520,h:310,color:'rgba(236,72,153,.12)'},
+{name:'운영구역',x:2030,y:1140,w:460,h:350,color:'rgba(239,68,68,.12)'}
+];
+
+let npcs=[];const names=['루나','민수','하나','타로','지우','사토','유나','카즈','미나','렌','나오','하루','소라','유키','리쿠','아오이','진','케이','마리','노아','리나','현우','서아','도윤','가이드','미오','아키','하린','소윤','준'];
+const lines=['한국여행센터가 오픈했어요!','올리브영 공식 링크를 확인하세요!','WOWPASS 정보도 있어요!','개인 공간 기능은 인증 후 이용 가능합니다.','CubeTown에 오신 것을 환영합니다!','오늘의 추천 공간을 확인해보세요!','이벤트 광장도 둘러보세요!','K-뷰티 노트를 방문해보세요!','성수동 코스가 인기예요!','노점거리에서 만나요!'];
+for(let i=0;i<46;i++){npcs.push({name:names[i%names.length],x:520+Math.random()*1550,y:420+Math.random()*850,tx:520+Math.random()*1550,ty:420+Math.random()*850,color:['#f97316','#22c55e','#ec4899','#8b5cf6','#06b6d4','#ef4444','#2563eb'][i%7],line:lines[i%lines.length]})}
+let logs=[{type:'공지',title:'CubeTown 서비스 업데이트 안내',status:'진행중'},{type:'한국여행센터',title:'올리브영 글로벌 공식 링크 연결',status:'이용가능'},{type:'한국여행센터',title:'WOWPASS 공식 링크 연결',status:'이용가능'},{type:'이벤트',title:'아바타 콘테스트 참가 신청 예정',status:'일정공개예정'}];
+
+function fillLogin(id){document.getElementById('loginId').value=id;document.getElementById('loginPw').value='demo1234'}
+function login(){const id=document.getElementById('loginId').value.trim(),pw=document.getElementById('loginPw').value.trim();if(!['testuser','admin'].includes(id)||pw!=='demo1234'){toast('아이디 또는 비밀번호가 맞지 않습니다.');return}currentUser=id;isAdmin=id==='admin';authStatus=isAdmin?'운영자':'미인증';document.getElementById('hudUser').textContent=id;document.getElementById('hudAuth').textContent=authStatus;document.getElementById('login').style.display='none'}
+function updateHud(){document.getElementById('hudCube').textContent=Number(cubes).toLocaleString('ko-KR')+' Cube';document.getElementById('hudAuth').textContent=authStatus}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2600)}
+function roundRect(x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);if(fill){ctx.fillStyle=fill;ctx.fill()}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=3;ctx.stroke()}}
+function sx(x){return x-cam.x} function sy(y){return y-cam.y}
+function drawWorld(){
+  ctx.fillStyle='#87cf77';ctx.fillRect(0,0,VIEW_W,VIEW_H);
+  ctx.save();ctx.translate(-cam.x,-cam.y);
+  ctx.fillStyle='#87cf77';ctx.fillRect(0,0,WORLD_W,WORLD_H);
+  for(let x=0;x<WORLD_W;x+=60){for(let y=0;y<WORLD_H;y+=60){if((x+y)%120===0){ctx.fillStyle='rgba(255,255,255,.09)';ctx.fillRect(x+20,y+20,9,9)}}}
+  // roads
+  roundRect(1200,0,120,WORLD_H,25,'#d8c39a');
+  roundRect(0,880,WORLD_W,110,25,'#d8c39a');
+  roundRect(600,500,1380,120,25,'#d8c39a');
+  roundRect(340,380,120,960,25,'#d8c39a');
+  zones.forEach(z=>{roundRect(z.x,z.y,z.w,z.h,26,z.color,'rgba(255,255,255,.2)');ctx.fillStyle='rgba(15,23,42,.65)';ctx.font='bold 20px sans-serif';ctx.textAlign='left';ctx.fillText(z.name,z.x+22,z.y+34)});
+  drawBillboard();
+  buildings.forEach(drawBuilding);shops.forEach(drawShop);stalls.forEach(drawStall);
+  npcs.forEach(drawNpc);drawPlayer();
+  ctx.restore();
+}
+function drawBillboard(){roundRect(1040,420,450,62,14,'rgba(17,24,39,.88)','#334155');ctx.fillStyle='#fff';ctx.font='bold 17px sans-serif';ctx.textAlign='center';const msg=frame%360<120?'인기 공간 TOP 1  서울 산책':frame%360<240?'한국여행센터 공식 링크 업데이트':'신규 이용자 인증 기능 오픈';ctx.fillText(msg,1265,458)}
+function drawBuilding(b){roundRect(b.x+8,b.y+10,b.w,b.h,18,'rgba(0,0,0,.17)');roundRect(b.x,b.y,b.w,b.h,18,b.color,'rgba(30,41,59,.45)');roundRect(b.x+14,b.y+12,b.w-28,30,10,'rgba(255,255,255,.22)');roundRect(b.x+b.w/2-26,b.y+b.h-48,52,48,10,'#374151');roundRect(b.x+24,b.y+58,42,32,8,'rgba(255,255,255,.7)');roundRect(b.x+b.w-66,b.y+58,42,32,8,'rgba(255,255,255,.7)');ctx.fillStyle='#fff';ctx.font='bold 18px sans-serif';ctx.textAlign='center';ctx.fillText(b.icon,b.x+b.w/2,b.y+38);ctx.font='bold 18px sans-serif';ctx.fillText(b.name,b.x+b.w/2,b.y+b.h+28);ctx.font='12px sans-serif';ctx.fillStyle='rgba(255,255,255,.93)';ctx.fillText(b.desc,b.x+b.w/2,b.y+b.h+47)}
+function drawShop(s){roundRect(s.x+5,s.y+7,s.w,s.w,14,'rgba(0,0,0,.16)');roundRect(s.x,s.y,s.w,s.w,14,s.color,'rgba(30,41,59,.45)');roundRect(s.x+14,s.y+16,s.w-28,22,8,'rgba(255,255,255,.8)');ctx.fillStyle='#fff';ctx.font='bold 12px sans-serif';ctx.textAlign='center';ctx.fillText(s.name,s.x+s.w/2,s.y+s.w+20)}
+function drawStall(s){roundRect(s.x,s.y,90,48,8,'#7c2d12','#431407');roundRect(s.x+7,s.y-20,76,24,7,'#fef3c7','#92400e');ctx.fillStyle='#7c2d12';ctx.font='bold 10px sans-serif';ctx.textAlign='center';ctx.fillText(s.name,s.x+45,s.y-4);ctx.fillStyle='#fff';ctx.font='10px sans-serif';ctx.fillText(s.text,s.x+45,s.y+70)}
+function drawNpc(n){const bob=Math.sin((frame+n.x)/18)*2;ctx.fillStyle='rgba(0,0,0,.22)';ctx.beginPath();ctx.ellipse(n.x,n.y+22,18,7,0,0,Math.PI*2);ctx.fill();roundRect(n.x-10,n.y-2+bob,20,24,8,n.color,'#172033');ctx.fillStyle='#ffd7b5';ctx.beginPath();ctx.arc(n.x,n.y-11+bob,11,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#172033';ctx.lineWidth=2;ctx.stroke();ctx.fillStyle='#111827';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(n.name,n.x,n.y+40);if((frame+Math.floor(n.x))%360<80){const tw=Math.min(210,Math.max(115,n.line.length*9));roundRect(n.x-tw/2,n.y-62,tw,28,14,'rgba(255,255,255,.94)');ctx.fillStyle='#111827';ctx.font='11px sans-serif';ctx.fillText(n.line,n.x,n.y-44)}}
+function drawPlayer(){const x=player.x,y=player.y,bob=Math.sin(player.step/6)*2;ctx.fillStyle='rgba(0,0,0,.25)';ctx.beginPath();ctx.ellipse(x+15,y+38,22,8,0,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#172033';ctx.lineWidth=5;ctx.lineCap='round';const swing=Math.sin(player.step/5)*4;ctx.beginPath();ctx.moveTo(x+11,y+25);ctx.lineTo(x+8+swing,y+39);ctx.stroke();ctx.beginPath();ctx.moveTo(x+20,y+25);ctx.lineTo(x+23-swing,y+39);ctx.stroke();roundRect(x+5,y+12+bob,20,24,8,player.color,'#172033');ctx.fillStyle='#ffd7b5';ctx.beginPath();ctx.arc(x+15,y+7+bob,12,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#172033';ctx.lineWidth=3;ctx.stroke();ctx.fillStyle=player.hair;ctx.beginPath();ctx.arc(x+15,y+2+bob,10,Math.PI,Math.PI*2);ctx.fill();ctx.fillStyle='#111827';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.fillText(player.name,x+15,y+58)}
+function collides(nx,ny){const r={x:nx,y:ny,w:player.w,h:player.h};for(const b of buildings){if(r.x<b.x+b.w&&r.x+r.w>b.x&&r.y<b.y+b.h&&r.y+r.h>b.y)return true}for(const s of shops){if(r.x<s.x+s.w&&r.x+r.w>s.x&&r.y<s.y+s.w&&r.y+r.h>s.y)return true}return nx<0||ny<0||nx+player.w>WORLD_W||ny+player.h>WORLD_H}
+function update(){
+  let dx=0,dy=0;if(keys.ArrowUp||keys.w)dy-=player.speed;if(keys.ArrowDown||keys.s)dy+=player.speed;if(keys.ArrowLeft||keys.a)dx-=player.speed;if(keys.ArrowRight||keys.d)dx+=player.speed;
+  if(dx||dy){if(!collides(player.x+dx,player.y))player.x+=dx;if(!collides(player.x,player.y+dy))player.y+=dy;player.step++}
+  cam.x=Math.max(0,Math.min(WORLD_W-VIEW_W,player.x+player.w/2-VIEW_W/2));
+  cam.y=Math.max(0,Math.min(WORLD_H-VIEW_H,player.y+player.h/2-VIEW_H/2));
+  npcs.forEach(n=>{if(Math.hypot(n.x-n.tx,n.y-n.ty)<3){n.tx=480+Math.random()*1600;n.ty=390+Math.random()*850}n.x+=(n.tx-n.x)*0.005;n.y+=(n.ty-n.y)*0.005});
+  const near=getNearObject(),hint=document.getElementById('hint');if(near){hint.textContent=near.name+' : Enter 또는 클릭';hint.style.display='block'}else hint.style.display='none'
+}
+function getNearObject(){const cx=player.x+player.w/2,cy=player.y+player.h/2;for(const o of [...buildings,...shops,...stalls]){const ox=o.x+(o.w||90)/2,oy=o.y+(o.h||48)/2;if(Math.hypot(cx-ox,cy-oy)<96)return o}return null}
+function drawMiniMap(){
+  mctx.clearRect(0,0,170,96);mctx.fillStyle='rgba(135,207,119,.45)';mctx.fillRect(0,0,170,96);
+  const mx=x=>x/WORLD_W*170,my=y=>y/WORLD_H*96;
+  mctx.fillStyle='rgba(255,255,255,.2)';zones.forEach(z=>mctx.fillRect(mx(z.x),my(z.y),z.w/WORLD_W*170,z.h/WORLD_H*96));
+  mctx.fillStyle='#0ea5e9';buildings.forEach(b=>mctx.fillRect(mx(b.x),my(b.y),4,4));
+  mctx.fillStyle='#fff';mctx.beginPath();mctx.arc(mx(player.x),my(player.y),4,0,Math.PI*2);mctx.fill();
+  mctx.strokeStyle='rgba(255,255,255,.7)';mctx.strokeRect(mx(cam.x),my(cam.y),VIEW_W/WORLD_W*170,VIEW_H/WORLD_H*96);
+}
+function loop(){frame++;update();drawWorld();drawMiniMap();if(frame%90===0)renderChat();requestAnimationFrame(loop)}
+function renderChat(){document.getElementById('chatLines').innerHTML=[...npcs].sort(()=>Math.random()-.5).slice(0,5).map(n=>`<p><b>${n.name}</b> : ${n.line}</p>`).join('')}
+function openObj(id){const o=[...buildings,...shops,...stalls].find(x=>x.id===id);if(!o)return;document.getElementById('modalTitle').textContent=o.name;document.getElementById('modalBody').innerHTML=contentFor(o);document.getElementById('modalBg').style.display='flex'}
+function closeModal(){document.getElementById('modalBg').style.display='none'}function bgClose(e){if(e.target.id==='modalBg')closeModal()}
+function badge(t,cls=''){return `<span class="badge ${cls}">${t}</span>`}
+function readyPopup(type='인증'){const map={인증:'인증받지 않은 이용자입니다. 해당 기능은 인증 완료 후 이용 가능합니다.',공간:'개인 공간 개설은 인증 이용자만 가능합니다. 인증 완료 후 이용해 주세요.',아이템:'아이템 구매는 인증 이용자만 가능합니다.',친구:'친구 기능은 인증 이용자만 사용할 수 있습니다.',노점:'노점 개설은 인증 이용자만 가능합니다.',큐브:'Cube 기능은 정식 서비스 오픈 후 제공됩니다.',이벤트:'현재 참가 신청 기간이 아닙니다. 다음 이벤트 일정을 확인해 주세요.',운영:'운영자 전용 메뉴입니다.'};toast(map[type]||map.인증)}
+function contentFor(o){
+if(o.id==='travel')return `<div class="grid cols2"><div class="card soft"><h3>한국여행센터</h3><p class="muted">CubeTown에서 실제로 이용 가능한 콘텐츠 공간입니다. 쿠폰을 직접 배포하지 않고 공식 사이트로 연결합니다.</p><div class="num">공식 링크 제공</div></div><div class="card"><h3>여행 스타터팩</h3><p class="muted">한국 쇼핑, 교통, 결제, 여행 준비 정보를 한곳에서 확인할 수 있도록 구성합니다.</p></div></div><div style="height:14px"></div><div class="grid cols3"><div class="card soft"><h3>올리브영 글로벌</h3><p class="muted">한국 쇼핑 및 K-뷰티 정보 확인</p><a class="btn green" target="_blank" rel="noopener noreferrer" href="https://global.oliveyoung.com/">공식 사이트 열기</a></div><div class="card soft"><h3>WOWPASS</h3><p class="muted">한국 여행자용 결제·교통·환전 서비스</p><a class="btn" target="_blank" rel="noopener noreferrer" href="https://www.wowpass.io/ja">공식 사이트 열기</a></div><div class="card soft"><h3>한국여행 가이드</h3><p class="muted">eSIM, 교통, 쇼핑, 맛집 정보</p><button class="btn secondary" onclick="readyPopup('인증')">인증 후 이용</button></div></div><div style="height:14px"></div><table><thead><tr><th>카테고리</th><th>내용</th><th>상태</th></tr></thead><tbody><tr><td>쇼핑</td><td>올리브영 공식 사이트 연결</td><td>${badge('이용가능','ok')}</td></tr><tr><td>여행편의</td><td>WOWPASS 공식 사이트 연결</td><td>${badge('이용가능','ok')}</td></tr><tr><td>여행가이드</td><td>한국여행 체크리스트</td><td>${badge('인증 필요','lock')}</td></tr></tbody></table>`;
+if(o.type==='shop')return `<div class="grid cols2"><div class="card soft"><h3>${o.name}</h3><p class="muted">이용자 개인 공간입니다. 소개글, 콘텐츠, 이미지, 링크를 전시할 수 있는 공간으로 확장됩니다.</p><div class="num">${o.shout}</div></div><div class="card"><h3>공간 정보</h3><p class="muted">방문자 128명 / 좋아요 34개 / 즐겨찾기 18명</p><button class="btn secondary" onclick="readyPopup('공간')">공간 관리</button> <button class="btn" onclick="showProfile('${o.name}')">프로필 보기</button></div></div>`;
+if(o.type==='stall')return `<div class="card soft"><h3>${o.name}</h3><p class="muted">노점 형태로 이용자가 마을에 캐릭터를 세워두고 자신의 공간을 홍보하는 기능입니다.</p><div class="num">${o.text}</div></div><div class="card" style="margin-top:14px"><button class="btn secondary" onclick="readyPopup('노점')">노점 상세 관리</button> <button class="btn" onclick="readyPopup('친구')">문의하기</button></div>`;
+if(o.id==='itemshop')return `<div class="grid cols3">${[['캐릭터 의상','500 Cube','상의, 하의, 신발, 액세서리'],['개인 공간 스킨','3,000 Cube','나만의 공간 꾸미기'],['노점 개설권','1,000 Cube','마을에 캐릭터를 세워 홍보'],['간판 스킨','800 Cube','공간 간판 꾸미기'],['프리미엄 공간 외형','5,000 Cube','고급 공간 디자인'],['특수 이펙트','700 Cube','캐릭터 주변 효과']].map(i=>`<div class="card soft"><h3>${i[0]}</h3><p class="muted">${i[2]}</p><div class="num">${i[1]}</div><button class="btn secondary" onclick="readyPopup('아이템')">구매하기</button></div>`).join('')}</div>`;
+if(o.id==='board')return `<div class="card soft"><h3>CubeTown 게시판</h3><p class="muted">공지사항, 이벤트, 추천 공간, 한국여행센터 업데이트를 확인할 수 있습니다.</p></div><div style="height:14px"></div><table><thead><tr><th>구분</th><th>제목</th><th>상태</th></tr></thead><tbody>${logs.map(l=>`<tr><td>${l.type}</td><td>${l.title}</td><td>${badge(l.status,l.status==='이용가능'||l.status==='진행중'?'ok':'warn')}</td></tr>`).join('')}</tbody></table>`;
+if(o.id==='auth')return `<div class="grid cols2"><div class="card soft"><p class="muted">현재 인증 상태</p><div class="num">${authStatus}</div></div><div class="card soft"><p class="muted">기본 이용 가능 기능</p><div class="num" style="font-size:18px">마을 이동 / 한국여행센터 / 게시판 열람</div></div></div><div class="card" style="margin-top:14px"><h3>인증 안내</h3><p class="muted">개인 공간 운영, 노점 설치, 친구 기능, 아이템 구매 등은 인증 이용자만 사용할 수 있습니다.</p><button class="btn" onclick="readyPopup('인증')">인증 신청</button></div>`;
+if(o.id==='admin')return isAdmin?`<div class="grid cols4"><div class="card soft"><p class="muted">등록 유저</p><div class="num">1,284명</div></div><div class="card soft"><p class="muted">개인 공간</p><div class="num">214개</div></div><div class="card soft"><p class="muted">노점</p><div class="num">88개</div></div><div class="card soft"><p class="muted">신고 대기</p><div class="num">3건</div></div></div><div class="card" style="margin-top:14px"><h3>운영 기능</h3><p class="muted">유저 상태, 공간 신청, 노점 신청, 게시판, 신고 내역, 한국여행센터 링크 등을 관리합니다.</p><button class="btn secondary" onclick="toast('회원 관리 화면으로 이동합니다.')">회원 관리</button> <button class="btn secondary" onclick="toast('콘텐츠 관리 화면으로 이동합니다.')">콘텐츠 관리</button></div>`:`<div class="card soft"><h3>운영자 전용 구역</h3><p class="muted">권한이 있는 계정으로 로그인해주세요.</p><button class="btn danger" onclick="readyPopup('운영')">접근 제한</button></div>`;
+if(o.id==='mypage')return `<div class="grid cols3"><div class="card soft"><p class="muted">아이디</p><div class="num" style="font-size:20px">${currentUser}</div></div><div class="card soft"><p class="muted">보유 큐브</p><div class="num">${Number(cubes).toLocaleString('ko-KR')} Cube</div></div><div class="card soft"><p class="muted">인증상태</p><div class="num" style="font-size:20px">${authStatus}</div></div></div><div class="card" style="margin-top:14px"><h3>캐릭터 꾸미기</h3><p class="muted">얼굴, 헤어, 의상, 액세서리, 이펙트를 변경하는 기능입니다.</p><button class="btn purple" onclick="changeAvatar()">베타 꾸미기 적용</button> <button class="btn secondary" onclick="readyPopup('아이템')">상세 편집</button></div><div class="card" style="margin-top:14px"><h3>내 공간 / 내 노점</h3><p class="muted">내가 만든 공간과 노점을 관리하는 영역입니다.</p><button class="btn secondary" onclick="readyPopup('공간')">공간 만들기</button> <button class="btn secondary" onclick="readyPopup('노점')">노점 설치</button></div>`;
+if(o.id==='event')return `<div class="grid cols2"><div class="card soft"><h3>이벤트 광장</h3><p class="muted">시즌 이벤트, 아바타 콘테스트, 공간 랭킹, 출석 이벤트 등을 운영할 수 있는 공간입니다.</p><button class="btn" onclick="readyPopup('이벤트')">참가 신청</button></div><div class="card soft"><h3>인기 공간 랭킹</h3><table><tbody><tr><td>1</td><td>서울 산책</td></tr><tr><td>2</td><td>K-뷰티 노트</td></tr><tr><td>3</td><td>Cube Studio</td></tr></tbody></table></div></div>`;return ''}
+function showProfile(name){document.getElementById('modalTitle').textContent=name+' 프로필';document.getElementById('modalBody').innerHTML=`<div class="grid cols2"><div class="card soft"><h3>${name}</h3><p class="muted">한국 여행과 디지털 콘텐츠에 관심이 있는 이용자입니다.</p><div class="num">친구 54명</div></div><div class="card"><h3>최근 활동</h3><p class="muted">공간 방문 / 게시판 열람 / 한국여행센터 확인</p><button class="btn secondary" onclick="readyPopup('친구')">친구 신청</button></div></div>`}
+function changeAvatar(){const colors=['#2563eb','#7c3aed','#16a34a','#ec4899','#f97316'],hairs=['#111827','#7c2d12','#f59e0b','#374151'];player.color=colors[Math.floor(Math.random()*colors.length)];player.hair=hairs[Math.floor(Math.random()*hairs.length)];cubes=Math.max(0,cubes-50);updateHud();toast('캐릭터 외형이 변경되었습니다. Cube 기능은 정식 서비스 오픈 후 제공됩니다.')}
+window.closeModal=closeModal;window.bgClose=bgClose;window.readyPopup=readyPopup;window.changeAvatar=changeAvatar;window.showProfile=showProfile;
+window.addEventListener('keydown',e=>{keys[e.key]=true;if(e.key==='Enter'){const o=getNearObject();if(o)openObj(o.id)}});window.addEventListener('keyup',e=>keys[e.key]=false);
+canvas.addEventListener('click',e=>{const r=canvas.getBoundingClientRect(),x=(e.clientX-r.left)*(canvas.width/r.width)+cam.x,y=(e.clientY-r.top)*(canvas.height/r.height)+cam.y;for(const o of [...buildings,...shops,...stalls]){const ow=o.w||90,oh=o.h||48;if(x>=o.x&&x<=o.x+ow&&y>=o.y-25&&y<=o.y+oh+80){openObj(o.id);return}}const near=getNearObject();if(near)openObj(near.id)});
+updateHud();renderChat();loop();
+</script>
+</body>
+</html>

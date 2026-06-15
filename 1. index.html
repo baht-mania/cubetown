@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>CubeTown</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <section id="login">
+        <div class="login-card">
+            <div class="logo">
+                <div class="mark">CT</div>
+                <div>
+                    <h1>CubeTown</h1>
+                    <p class="muted">아바타 기반 디지털 커뮤니티 플랫폼</p>
+                </div>
+            </div>
+            <div class="notice">아이디와 비밀번호를 입력해 CubeTown에 입장하세요. 일부 기능은 인증 이용자만 사용할 수 있습니다.</div>
+            <label>아이디</label><input id="loginId" value="testuser">
+            <label>비밀번호</label><input id="loginPw" type="password" value="demo1234">
+            <button class="btn" style="width:100%;margin-top:16px" onclick="login()">CubeTown 입장</button>
+            <div class="accounts">
+                <div class="chip" onclick="fillLogin('testuser')"><b>일반 이용자</b><span>testuser / demo1234</span></div>
+                <div class="chip" onclick="fillLogin('admin')"><b>운영자</b><span>admin / demo1234</span></div>
+            </div>
+        </div>
+    </section>
+
+    <canvas id="game" width="1280" height="760"></canvas>
+    <div class="top">
+        <div class="brand">
+            <div class="mark" style="width:40px;height:40px;border-radius:13px">CT</div>
+            <div><b>CubeTown</b><span>차세대 디지털 커뮤니티 플랫폼</span></div>
+        </div>
+        <div class="hud">
+            <div class="pill">유저: <span id="hudUser">testuser</span></div>
+            <div class="pill">보유 큐브: <span id="hudCube">12,800 Cube</span></div>
+            <div class="pill">인증상태: <span id="hudAuth">미인증</span></div>
+        </div>
+    </div>
+    
+    <div class="help">조작: 방향키 / WASD 이동. 넓은 마을을 이동하면 화면이 캐릭터를 따라갑니다.<br>건물·개인 공간·노점 근처에서 Enter 또는 클릭. 한국여행센터는 실제 공식 링크로 연결됩니다.</div>
+    <div class="minimap"><h3>미니맵</h3><canvas id="mini" width="170" height="96"></canvas></div>
+    <div id="hint" class="hint"></div>
+    <div class="chat"><h3>마을 외침</h3><div id="chatLines"></div></div>
+    <div id="toast" class="toast"></div>
+    
+    <div id="modalBg" class="modal-bg" onclick="bgClose(event)">
+        <div class="modal">
+            <div class="modal-head">
+                <h2 id="modalTitle">제목</h2>
+                <button class="close" onclick="closeModal()">닫기</button>
+            </div>
+            <div id="modalBody" class="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="player.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>

@@ -295,10 +295,44 @@
             box-shadow: 0 0 14px rgba(56, 189, 248, 0.45);
             pointer-events: none;
         }
+        /* === 로딩 화면 === */
+        #loading-screen {
+            position: fixed; inset: 0;
+            background: #0b1220;
+            display: flex; align-items: center; justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.6s ease;
+        }
+        #loading-content { text-align: center; }
+        #loading-title {
+            color: #38bdf8; font-size: 32px; font-weight: 700;
+            letter-spacing: 0.22em; margin: 0 0 6px;
+        }
+        #loading-sub { color: #475569; font-size: 12px; margin: 0 0 24px; letter-spacing: 0.12em; }
+        #loading-bar-bg {
+            width: 260px; height: 6px;
+            background: rgba(255,255,255,0.10); border-radius: 3px;
+            overflow: hidden; margin: 0 auto 14px;
+        }
+        #loading-bar {
+            height: 100%; width: 0%;
+            background: linear-gradient(90deg, #38bdf8, #818cf8);
+            border-radius: 3px; transition: width 0.25s ease;
+        }
+        #loading-text { color: #64748b; font-size: 12px; margin: 0; }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
 <body>
+    <!-- 로딩 화면 -->
+    <div id="loading-screen">
+        <div id="loading-content">
+            <p id="loading-title">CUBE TOWN</p>
+            <p id="loading-sub">GLOBAL METAVERSE PLAZA</p>
+            <div id="loading-bar-bg"><div id="loading-bar"></div></div>
+            <p id="loading-text">에셋 로딩 중... 0%</p>
+        </div>
+    </div>
 
     <div id="ui-layer">
         <div class="hud-box">
@@ -473,19 +507,50 @@
         let score = 0;
         let frameCount = 0;
 
+        // === 로딩 진행 추적 ===
+        // playerImg(1) + bgImg(1) + botImgs(20) + objectDefs(26) = 48
+        const _TOTAL_IMAGES = 48;
+        let _loadedCount = 0;
+        function _onImgLoad() {
+            _loadedCount++;
+            const pct = Math.min(100, Math.round(_loadedCount / _TOTAL_IMAGES * 100));
+            const bar = document.getElementById('loading-bar');
+            const txt = document.getElementById('loading-text');
+            if (bar) bar.style.width = pct + '%';
+            if (txt) txt.textContent = `에셋 로딩 중... ${pct}%`;
+            if (_loadedCount >= _TOTAL_IMAGES) _hideLoading();
+        }
+        function _trackImg(img) {
+            // 이미 캐시된 이미지는 onload가 발화하지 않으므로 complete 체크
+            if (img.complete && img.naturalWidth > 0) { _onImgLoad(); return; }
+            img.addEventListener('load',  _onImgLoad, { once: true });
+            img.addEventListener('error', _onImgLoad, { once: true });
+        }
+        function _hideLoading() {
+            const ls = document.getElementById('loading-screen');
+            if (!ls || ls.style.opacity === '0') return;
+            ls.style.opacity = '0';
+            setTimeout(() => { if (ls.parentNode) ls.parentNode.removeChild(ls); }, 650);
+        }
+        // 10초 타임아웃 (일부 이미지 실패해도 게임 시작)
+        setTimeout(_hideLoading, 10000);
+
         // 캐릭터 이미지 프리로드 (플레이어 1 + 봇 20 = 21장)
         const playerImg = new Image();
         playerImg.src = 'assets/avatars/0. 메인캐릭터.png';
+        _trackImg(playerImg);
         const botImgs = [];
         for (let i = 1; i <= 20; i++) {
             const img = new Image();
             img.src = `assets/avatars/캐릭터${i}.png`;
+            _trackImg(img);
             botImgs.push(img);
         }
 
         // 배경 맵 이미지 (1500×1500 → 게임 좌표 3000×3000 으로 정수배 ×2 nearest-neighbor 업스케일)
         const bgImg = new Image();
         bgImg.src = 'assets/game/결과물2.png';
+        _trackImg(bgImg);
 
         // === 건물/소품 오브젝트 정의 ===
         // key → { src, w(표시 가로), h(표시 세로), collideRatio: [가로비, 세로비] }
@@ -527,6 +592,7 @@
         for (const k in objectDefs) {
             const img = new Image();
             img.src = 'assets/objects/' + objectDefs[k].src;
+            _trackImg(img);
             objectDefs[k].img = img;
         }
 
@@ -944,8 +1010,8 @@
             }
         }
 
-        // 게임 로직 업데이트
-        function update() {
+        // 게임 로직 업데이트 (dt: 60fps 기준 정규화된 프레임 시간. 60fps=1.0, 120fps=0.5)
+        function update(dt) {
             frameCount++;
 
             // 팝업 떠 있는 동안 게임 일시정지 (이동/봇/큐브 모두 멈춤)
@@ -969,13 +1035,15 @@
                 dx = (dx / length) * player.speed;
                 dy = (dy / length) * player.speed;
             }
+            // delta time 적용 — 브라우저/모니터 주사율과 무관하게 일정한 속도
+            dx *= dt; dy *= dt;
 
             const oldPx = player.x, oldPy = player.y;
             if (dx !== 0 && !checkCollision(player.x + dx, player.y, player.size)) player.x += dx;
             if (dy !== 0 && !checkCollision(player.x, player.y + dy, player.size)) player.y += dy;
             // 터치 조이스틱
-            const tdx = touchInput.dx * player.speed;
-            const tdy = touchInput.dy * player.speed;
+            const tdx = touchInput.dx * player.speed * dt;
+            const tdy = touchInput.dy * player.speed * dt;
             if (Math.abs(tdx) > 0.01 && !checkCollision(player.x + tdx, player.y, player.size)) player.x += tdx;
             if (Math.abs(tdy) > 0.01 && !checkCollision(player.x, player.y + tdy, player.size)) player.y += tdy;
             player.isMoving = (player.x !== oldPx || player.y !== oldPy);
@@ -1016,8 +1084,8 @@
                         pickNewTarget(bot);
                     }
                 } else {
-                    let moveX = (botDx / dist) * bot.speed;
-                    let moveY = (botDy / dist) * bot.speed;
+                    let moveX = (botDx / dist) * bot.speed * dt;
+                    let moveY = (botDy / dist) * bot.speed * dt;
                     if (!checkCollision(bot.x + moveX, bot.y + moveY, bot.size)) {
                         bot.x += moveX;
                         bot.y += moveY;
@@ -1850,16 +1918,43 @@
             const placeholder = document.getElementById('minigame-placeholder');
             const contentEl   = document.getElementById('minigame-content');
             const closeBtn    = document.getElementById('minigame-close');
+            const savedStyle  = contentEl.getAttribute('style') || '';
 
             overlay.classList.add('show');
             placeholder.style.display = 'none';
-            contentEl.style.padding   = '0';
-            contentEl.style.overflow  = 'hidden';
+            // 가이드 + 게임 2단 레이아웃
+            contentEl.style.cssText = 'flex:1;display:flex;flex-direction:row;padding:0;overflow:hidden;align-items:stretch;';
 
-            // Phaser 마운트 div 생성
+            // 좌측: 게임 플레이 가이드
+            const guideEl = document.createElement('div');
+            guideEl.id = 'mg-guide';
+            guideEl.style.cssText = [
+                'width:168px;min-width:168px;padding:18px 14px;',
+                'display:flex;flex-direction:column;gap:10px;',
+                'border-right:1px solid rgba(255,255,255,0.08);',
+                'overflow:hidden;background:rgba(15,23,42,0.6);'
+            ].join('');
+            guideEl.innerHTML = `
+                <div style="color:#38bdf8;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:2px;">⌨️ 조작 방법</div>
+                <div style="color:#cbd5e1;font-size:12px;line-height:1.75;">
+                    ← → 방향키<br>
+                    📱 좌/우 탭 (터치)
+                </div>
+                <div style="color:#38bdf8;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-top:6px;margin-bottom:2px;">🎯 미션</div>
+                <div style="color:#cbd5e1;font-size:12px;line-height:1.75;">
+                    아이템 먹으면 <span style="color:#f59e0b;font-weight:600;">+150점</span><br>
+                    장애물 피해 60초 버티기<br>
+                    목숨 3개 소진 시 종료
+                </div>
+                <div style="color:#94a3b8;font-size:11px;line-height:1.6;margin-top:auto;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07);">
+                    💡 시간이 지날수록<br>장애물 속도가<br>빨라집니다
+                </div>`;
+            contentEl.appendChild(guideEl);
+
+            // 우측: Phaser 게임 (중앙 정렬)
             const mountEl = document.createElement('div');
             mountEl.id = 'phaser-mount';
-            mountEl.style.cssText = 'width:100%;height:100%;display:flex;align-items:center;justify-content:center;';
+            mountEl.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden;';
             contentEl.appendChild(mountEl);
 
             let phaserInst = null;
@@ -1870,11 +1965,12 @@
                 cleanedUp = true;
                 setTimeout(() => {
                     if (phaserInst) { phaserInst.destroy(true); phaserInst = null; }
-                    const m = document.getElementById('phaser-mount');
-                    if (m) m.remove();
+                    ['phaser-mount', 'mg-guide'].forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.remove();
+                    });
                     placeholder.style.display = '';
-                    contentEl.style.padding   = '';
-                    contentEl.style.overflow  = '';
+                    contentEl.setAttribute('style', savedStyle);
                     overlay.classList.remove('show');
                     onComplete();
                 }, delay || 0);
@@ -1952,21 +2048,21 @@
                     if (this.isOver) return;
                     const x   = Phaser.Math.Between(40, GAME_W - 40);
                     const key = Phaser.Math.RND.pick(['mg_obs1', 'mg_obs2', 'mg_obs3']);
-                    const obs = this.physics.add.sprite(x, -60, key);
+                    // group.create()를 사용해야 physics body가 그룹 설정에 맞게 생성됨
+                    // physics.add.sprite() 후 group.add()는 body를 재생성해 velocity가 초기화되는 버그 있음
+                    const obs = this.obstacles.create(x, -60, key);
                     obs.setScale(0.15);
                     obs.body.setSize(obs.width * 0.6, obs.height * 0.8);
                     obs.body.setVelocityY(200 + (60 - this.timeLeft) * 3);
-                    this.obstacles.add(obs);
                 }
 
                 spawnItem() {
                     if (this.isOver) return;
                     const x    = Phaser.Math.Between(40, GAME_W - 40);
                     const key  = Phaser.Math.RND.pick(['mg_item1', 'mg_item2']);
-                    const item = this.physics.add.sprite(x, -40, key);
+                    const item = this.items.create(x, -40, key);
                     item.setScale(0.12);
                     item.body.setVelocityY(150);
-                    this.items.add(item);
                 }
 
                 onGetItem(player, item) {
@@ -2022,14 +2118,19 @@
             });
         };
 
-        // 게임 루프
-        function gameLoop() {
-            update();
+        // 게임 루프 — delta time으로 프레임레이트 독립적 속도 보장
+        // 60fps 기준 정규화: 60fps→dt=1.0, 120fps→dt=0.5, 30fps→dt=2.0
+        // 탭 비활성화 후 복귀 시 큰 dt 방지를 위해 200ms 이상은 1.0으로 clamp
+        let _lastFrameTime = 0;
+        function gameLoop(timestamp) {
+            const raw = timestamp - _lastFrameTime;
+            _lastFrameTime = timestamp;
+            const dt = (raw > 0 && raw < 200) ? raw / 16.667 : 1;
+            update(dt);
             draw();
             requestAnimationFrame(gameLoop);
         }
-
-        gameLoop();
+        requestAnimationFrame(ts => { _lastFrameTime = ts; requestAnimationFrame(gameLoop); });
     </script>
 </body>
 </html>

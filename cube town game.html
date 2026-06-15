@@ -122,12 +122,11 @@
         #popup-no:hover { background: rgba(255, 255, 255, 0.16); }
         #popup-no:active { transform: scale(0.97); }
 
-        /* === 회사 소개 칸반보드 (상단 중앙) === */
+        /* === 회사 소개 칸반보드 (상단 우측) === */
         #company-board {
             position: fixed;
             top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            right: 20px;
             background: rgba(15, 23, 42, 0.85);
             border: 1px solid rgba(255, 255, 255, 0.18);
             backdrop-filter: blur(10px);
@@ -246,6 +245,7 @@
         <p style="margin:3px 0;"><b>우클릭+드래그</b>: 카메라 이동</p>
         <p style="margin:3px 0;"><b>방향키</b>: 1px (Shift: 10px)</p>
         <p style="margin:3px 0;"><b>휠 / [</b> · <b>]</b>: 크기 조정 (Shift: 큰 단계)</p>
+        <p style="margin:3px 0;"><b>, / .</b>: 충돌 반경 조정 (Shift: 큰 단계)</p>
         <p style="margin:3px 0;"><b>Delete</b>: 선택 오브젝트 제거</p>
         <p style="margin:3px 0;"><b>R</b>: 기본 위치로 리셋</p>
         <p style="margin:3px 0;"><b>S</b>: objects[] 콘솔+클립보드 출력 (영구 박을 때)</p>
@@ -253,6 +253,7 @@
             <p style="margin:3px 0;"><b style="color:#f59e0b;">선택:</b> <span id="edit-key"></span></p>
             <p style="margin:3px 0;"><b style="color:#f59e0b;">좌표:</b> (<span id="edit-x"></span>, <span id="edit-y"></span>)</p>
             <p style="margin:3px 0;"><b style="color:#f59e0b;">크기:</b> <span id="edit-scale">100%</span></p>
+            <p style="margin:3px 0;"><b style="color:#ef4444;">충돌:</b> <span id="edit-collide">30</span>px</p>
         </div>
         <p style="margin-top:10px; color:#10b981; font-size:11px;">자동 저장: <span id="save-time">대기 중</span></p>
         <p style="margin:3px 0; color:#94a3b8; font-size:11px;">cursor: <span id="edit-mouse">0, 0</span></p>
@@ -406,7 +407,8 @@
                     typeof o.key === 'string' && objectDefs[o.key] &&
                     typeof o.x === 'number' && typeof o.y === 'number' &&
                     isFinite(o.x) && isFinite(o.y) &&
-                    (o.scale === undefined || (typeof o.scale === 'number' && isFinite(o.scale) && o.scale > 0))
+                    (o.scale === undefined || (typeof o.scale === 'number' && isFinite(o.scale) && o.scale > 0)) &&
+                    (o.collideRadius === undefined || (typeof o.collideRadius === 'number' && isFinite(o.collideRadius) && o.collideRadius >= 0))
                 );
                 if (!valid) {
                     console.warn('[Storage] 저장 데이터 검증 실패 → 기본 위치 사용');
@@ -415,6 +417,7 @@
                 const loaded = data.objects.map(o => {
                     const out = { key: o.key, x: o.x, y: o.y };
                     if (o.scale !== undefined) out.scale = o.scale;
+                    if (o.collideRadius !== undefined) out.collideRadius = o.collideRadius;
                     return out;
                 });
                 // 마이그레이션: 코드에 신규 오브젝트 추가됨 → 저장된 뒤에 default 보충
@@ -574,18 +577,20 @@
 
         // 장애물 (충돌 박스) - objects[] 의 collideRatio 값을 기반으로 자동 생성.
         // 발(footer) 좌표 기준 발 footprint만 충돌 → 큰 건물도 윗부분(지붕/탑신)은 통과 가능 = 시각적 자연
-        // 충돌 시스템: 모든 오브젝트 발 위치(x, y)에 반경 30px 사각 박스 (60×60)
-        // 사용자 요청: 01~26 모두 충돌 (이전 noCollide 예외도 제거됨)
+        // 충돌 시스템: 인스턴스별 obj.collideRadius (기본 COLLIDE_RADIUS=30, 편집 모드 , / . 키로 조정)
+        // obj.collideRadius = 0 이면 통과 가능 (충돌 박스 미생성)
         const COLLIDE_RADIUS = 30;
         const buildings = [];
         for (const obj of objects) {
             const def = objectDefs[obj.key];
             if (def.noCollide) continue;
+            const r = obj.collideRadius ?? COLLIDE_RADIUS;
+            if (r <= 0) continue;
             buildings.push({
-                x: obj.x - COLLIDE_RADIUS,
-                y: obj.y - COLLIDE_RADIUS,
-                w: COLLIDE_RADIUS * 2,
-                h: COLLIDE_RADIUS * 2,
+                x: obj.x - r,
+                y: obj.y - r,
+                w: r * 2,
+                h: r * 2,
                 label: obj.key
             });
         }
@@ -1083,8 +1088,9 @@
                     savedAt: new Date().toISOString(),
                     objects: objects.map(o => {
                         const out = { key: o.key, x: Math.round(o.x), y: Math.round(o.y) };
-                        // scale은 1.0이 아닐 때만 저장 (용량 절약)
+                        // scale, collideRadius는 default가 아닐 때만 저장 (용량 절약)
                         if (o.scale && o.scale !== 1) out.scale = Math.round(o.scale * 100) / 100;
+                        if (o.collideRadius !== undefined && o.collideRadius !== COLLIDE_RADIUS) out.collideRadius = o.collideRadius;
                         return out;
                     })
                 }));
@@ -1130,6 +1136,7 @@
         const editXEl     = document.getElementById('edit-x');
         const editYEl     = document.getElementById('edit-y');
         const editScaleEl = document.getElementById('edit-scale');
+        const editCollideEl = document.getElementById('edit-collide');
         const editMouseEl = document.getElementById('edit-mouse');
 
         function screenToWorld(clientX, clientY) {
@@ -1164,23 +1171,25 @@
                 editXEl.innerText = Math.round(obj.x);
                 editYEl.innerText = Math.round(obj.y);
                 if (editScaleEl) editScaleEl.innerText = Math.round((obj.scale || 1) * 100) + '%';
+                if (editCollideEl) editCollideEl.innerText = (obj.collideRadius ?? COLLIDE_RADIUS);
             } else {
                 editSelDom.style.display = 'none';
             }
         }
 
-        // 편집 종료 시 충돌 박스 재계산 (objects 이동/삭제 반영)
-        // 일률 반경 5px 원형, noCollide 스킵
+        // 편집 종료 + markDirty 시 충돌 박스 재계산. 인스턴스별 collideRadius 반영
         function rebuildBuildings() {
             buildings.length = 0;
             for (const obj of objects) {
                 const def = objectDefs[obj.key];
                 if (def.noCollide) continue;
+                const r = obj.collideRadius ?? COLLIDE_RADIUS;
+                if (r <= 0) continue;
                 buildings.push({
-                    x: obj.x - COLLIDE_RADIUS,
-                    y: obj.y - COLLIDE_RADIUS,
-                    w: COLLIDE_RADIUS * 2,
-                    h: COLLIDE_RADIUS * 2,
+                    x: obj.x - r,
+                    y: obj.y - r,
+                    w: r * 2,
+                    h: r * 2,
                     label: obj.key
                 });
             }
@@ -1189,6 +1198,9 @@
         function toggleEditMode() {
             editMode = !editMode;
             editHud.style.display = editMode ? 'block' : 'none';
+            // 편집 모드 진입 시 우상단 회사 보드 숨김 (편집 HUD와 우상단에서 겹침). 종료 시 복원.
+            const companyBoard = document.getElementById('company-board');
+            if (companyBoard) companyBoard.style.display = editMode ? 'none' : '';
             if (!editMode) {
                 selectedIndex = -1;
                 isDragging = false;
@@ -1225,6 +1237,7 @@
             const lines = objects.map(o => {
                 const fields = [`key: '${o.key}'`, `x: ${Math.round(o.x)}`, `y: ${Math.round(o.y)}`];
                 if (o.scale && o.scale !== 1) fields.push(`scale: ${Math.round(o.scale * 100) / 100}`);
+                if (o.collideRadius !== undefined && o.collideRadius !== COLLIDE_RADIUS) fields.push(`collideRadius: ${o.collideRadius}`);
                 return `    { ${fields.join(', ')} },`;
             });
             // 코드에 그대로 붙여넣을 수 있게 DEFAULT_OBJECTS 변수명 사용 + scale 포함
@@ -1262,6 +1275,20 @@
             // R 키: 기본 위치 리셋
             if (e.code === 'KeyR') {
                 resetObjectsToDefault();
+                e.preventDefault();
+                return;
+            }
+            // , / . : 선택 오브젝트 충돌 반경 조정 (Shift = 큰 단계)
+            if (e.code === 'Comma' || e.code === 'Period') {
+                if (selectedIndex >= 0) {
+                    const step = e.shiftKey ? 20 : 5;
+                    const delta = e.code === 'Comma' ? -step : step;
+                    const obj = objects[selectedIndex];
+                    const cur = obj.collideRadius ?? COLLIDE_RADIUS;
+                    obj.collideRadius = Math.max(0, Math.min(200, cur + delta));
+                    markDirty();
+                    updateEditHUD();
+                }
                 e.preventDefault();
                 return;
             }

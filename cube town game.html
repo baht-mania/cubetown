@@ -50,6 +50,76 @@
             color: #94a3b8;
             margin-top: 10px;
         }
+        /* === 건물 진입 팝업 === */
+        #popup-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: popupFadeIn 0.18s ease-out;
+        }
+        #popup-overlay.show { display: flex; }
+        @keyframes popupFadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        #popup {
+            background: rgba(15, 23, 42, 0.96);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 16px;
+            padding: 32px 36px 26px;
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+            min-width: 320px;
+            max-width: 440px;
+            text-align: center;
+            animation: popupPop 0.22s cubic-bezier(.34, 1.56, .64, 1);
+        }
+        @keyframes popupPop {
+            from { transform: scale(0.9); opacity: 0; }
+            to   { transform: scale(1);   opacity: 1; }
+        }
+        #popup-text {
+            font-size: 17px;
+            line-height: 1.5;
+            margin: 0 0 22px;
+            color: #f1f5f9;
+            font-weight: 500;
+        }
+        #popup-text strong {
+            color: #38bdf8;
+            font-weight: 700;
+        }
+        .popup-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        .popup-buttons button {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.1s, background 0.15s;
+            font-family: inherit;
+            font-weight: 600;
+        }
+        #popup-yes {
+            background: #3b82f6;
+            color: white;
+        }
+        #popup-yes:hover { background: #2563eb; }
+        #popup-yes:active { transform: scale(0.97); }
+        #popup-no {
+            background: rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+        }
+        #popup-no:hover { background: rgba(255, 255, 255, 0.16); }
+        #popup-no:active { transform: scale(0.97); }
     </style>
 </head>
 <body>
@@ -68,10 +138,78 @@
 
     <canvas id="gameCanvas"></canvas>
 
+    <!-- BGM (브라우저 정책상 첫 사용자 인터랙션 후 재생) -->
+    <audio id="bgm" loop preload="auto">
+        <source src="assets/BGM/Market_Day_at_the_Shrine.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- 건물 진입 팝업 -->
+    <div id="popup-overlay">
+        <div id="popup">
+            <p id="popup-text"></p>
+            <div class="popup-buttons">
+                <button id="popup-yes">응. 이동할게</button>
+                <button id="popup-no">아니, 다른 곳으로 갈게</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false; // 픽셀룩 보존
+
+        // === BGM ===
+        // 브라우저 자동재생 정책 때문에 첫 사용자 인터랙션(키/클릭) 시 재생 시작
+        const bgm = document.getElementById('bgm');
+        bgm.volume = 0.35;
+        function startBGM() {
+            bgm.play().catch(() => {});
+            window.removeEventListener('keydown', startBGM);
+            window.removeEventListener('click', startBGM);
+        }
+        window.addEventListener('keydown', startBGM, { once: true });
+        window.addEventListener('click', startBGM, { once: true });
+
+        // === 건물 진입 팝업 ===
+        const popupOverlay = document.getElementById('popup-overlay');
+        const popupText    = document.getElementById('popup-text');
+        const popupYes     = document.getElementById('popup-yes');
+        const popupNo      = document.getElementById('popup-no');
+        let popupOpen = false;
+        let currentPopupUrl = null;
+        let activeZoneKey = null; // 현재 안에 있는 zone — 같은 zone 안에서 팝업 닫고 그 안에 머물러도 재트리거 X
+        const INTERACTION_RADIUS = 240; // 오브젝트 발 위치 기준 반경
+
+        // 한국어 조사 자동 처리: 받침 있으면 "으로", 없으면 "로"
+        function withSubjectParticle(label) {
+            const last = label[label.length - 1];
+            const code = last.charCodeAt(0);
+            const isHangul = code >= 0xAC00 && code <= 0xD7A3;
+            const hasFinal = isHangul ? ((code - 0xAC00) % 28) !== 0 : true;
+            return hasFinal ? '으로' : '로';
+        }
+
+        function showPopup(obj) {
+            const meta = objectDefs[obj.key].interaction;
+            popupText.innerHTML = `<strong>${meta.label}</strong>${withSubjectParticle(meta.label)} 이동하시겠습니까?`;
+            currentPopupUrl = meta.url;
+            popupOverlay.classList.add('show');
+            popupOpen = true;
+        }
+        function closePopup() {
+            popupOverlay.classList.remove('show');
+            popupOpen = false;
+            currentPopupUrl = null;
+        }
+        popupYes.addEventListener('click', () => {
+            if (currentPopupUrl) window.location.href = currentPopupUrl;
+        });
+        popupNo.addEventListener('click', closePopup);
+        // ESC로도 닫기
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && popupOpen) closePopup();
+        });
 
         // 화면 크기 설정
         function resize() {
@@ -105,16 +243,19 @@
         // key → { src, w(표시 가로), h(표시 세로), collideRatio: [가로비, 세로비] }
         //   collideRatio가 [0,0]이면 통과 가능 (다리/소품/랜드마크 외곽 등)
         //   충돌 박스는 오브젝트의 발(footer) 부근 footprint만 잡음
+        // === interaction 필드 ===
+        // 1~9 메인 오브젝트는 캐릭터가 가까이 가면 팝업이 떠서 외부 URL로 이동 가능
+        // url은 임시로 모두 'https://www.naver.com'. 실제 링크가 결정되면 여기만 수정하면 됨.
         const objectDefs = {
-            hanok_gate:     { src: '01_korea_hanok_gate.png',     w: 550, h: 550, collideRatio: [0.55, 0.18] },
-            tourism_center: { src: '02_korea_tourism_center.png', w: 550, h: 550, collideRatio: [0.65, 0.22] },
-            hanok_shop:    { src: '03_korea_hanok_shop.png',     w: 380, h: 380, collideRatio: [0.70, 0.25] },
-            ramen:         { src: '04_japan_ramen.png',          w: 380, h: 380, collideRatio: [0.70, 0.25] },
-            night_market:  { src: '05_taiwan_market.png',        w: 320, h: 320, collideRatio: [0,    0   ] },
-            fountain:      { src: '06_fountain.png',             w: 450, h: 450, collideRatio: [0.60, 0.35] },
-            red_bridge:    { src: '07_red_bridge.png',           w: 520, h: 400, collideRatio: [0,    0   ] },
-            modern_gallery:{ src: '08_modern_gallery.png',       w: 600, h: 550, collideRatio: [0.70, 0.25] },
-            torii:         { src: '09_japan_torii.png',          w: 380, h: 420, collideRatio: [0,    0   ] },
+            hanok_gate:     { src: '01_korea_hanok_gate.png',     w: 550, h: 550, collideRatio: [0.55, 0.18], interaction: { label: '한옥문',      url: 'https://www.naver.com' } },
+            tourism_center: { src: '02_korea_tourism_center.png', w: 550, h: 550, collideRatio: [0.65, 0.22], interaction: { label: '한국여행센터', url: 'https://www.naver.com' } },
+            hanok_shop:    { src: '03_korea_hanok_shop.png',     w: 380, h: 380, collideRatio: [0.70, 0.25], interaction: { label: '한옥상점',     url: 'https://www.naver.com' } },
+            ramen:         { src: '04_japan_ramen.png',          w: 380, h: 380, collideRatio: [0.70, 0.25], interaction: { label: '라멘집',       url: 'https://www.naver.com' } },
+            night_market:  { src: '05_taiwan_market.png',        w: 320, h: 320, collideRatio: [0,    0   ], interaction: { label: '야시장',       url: 'https://www.naver.com' } },
+            fountain:      { src: '06_fountain.png',             w: 450, h: 450, collideRatio: [0.60, 0.35], interaction: { label: '분수 광장',     url: 'https://www.naver.com' } },
+            red_bridge:    { src: '07_red_bridge.png',           w: 520, h: 400, collideRatio: [0,    0   ], interaction: { label: '빨간 다리',    url: 'https://www.naver.com' } },
+            modern_gallery:{ src: '08_modern_gallery.png',       w: 600, h: 550, collideRatio: [0.70, 0.25], interaction: { label: '모던 갤러리',  url: 'https://www.naver.com' } },
+            torii:         { src: '09_japan_torii.png',          w: 380, h: 420, collideRatio: [0,    0   ], interaction: { label: '토리이',       url: 'https://www.naver.com' } },
             statue_liberty:{ src: '10_us_statue_liberty.png',    w: 350, h: 420, collideRatio: [0.40, 0.25] },
             big_ben:       { src: '11_uk_big_ben.png',           w: 320, h: 400, collideRatio: [0.45, 0.25] },
             eiffel:        { src: '12_fr_eiffel.png',            w: 340, h: 420, collideRatio: [0.45, 0.20] },
@@ -140,59 +281,63 @@
             objectDefs[k].img = img;
         }
 
-        // 오브젝트 인스턴스 배치 — (x, y)는 오브젝트의 발(footer) 좌표 = 그림자 중심
-        // 결과물2.png (1500×1500) 의 zone 위치를 게임 좌표 3000×3000 으로 환산해 배치
+        // 오브젝트 인스턴스 배치 — (x, y)는 오브젝트의 발(footer) 좌표
+        // === 1~9: 맵 3×3 그리드 (각 셀 1000×1000, 셀 중심에 메인 오브젝트) ===
+        // [1 한옥문]    [2 여행센터]   [3 한옥상점]
+        // [4 라멘집]    [7 빨간 다리]  [5 야시장]
+        // [6 분수]      [8 갤러리]     [9 토리이]
+        // 10~26: 나머지 미니어처/상점/소품은 셀 사이 공간에 자연 배치
         const objects = [
-            // --- 메인 zone 랜드마크 ---
-            { key: 'hanok_gate',      x: 480,  y: 600  }, // 좌상 입구
-            { key: 'tourism_center',  x: 1280, y: 550  }, // 상단 중앙
-            { key: 'fountain',        x: 2280, y: 600  }, // 우상 이벤트 광장 중심
-            { key: 'red_bridge',      x: 1450, y: 1500 }, // 정중앙 시냇물 위 (실측 보정)
-            { key: 'modern_gallery',  x: 1200, y: 2400 }, // 하단 중앙 전시관
-            { key: 'torii',           x: 2200, y: 1500 }, // 우중 유저 공간 입구
+            // === 메인 1~9 (3×3 그리드 — 각 셀 중심) ===
+            { key: 'hanok_gate',      x: 500,  y: 500  }, // 1 좌상
+            { key: 'tourism_center',  x: 1500, y: 500  }, // 2 상단 중앙
+            { key: 'hanok_shop',      x: 2500, y: 500  }, // 3 우상
+            { key: 'ramen',           x: 500,  y: 1500 }, // 4 좌중
+            { key: 'red_bridge',      x: 1500, y: 1500 }, // 7 정중앙 시냇물
+            { key: 'night_market',    x: 2500, y: 1500 }, // 5 우중
+            { key: 'fountain',        x: 500,  y: 2500 }, // 6 좌하
+            { key: 'modern_gallery',  x: 1500, y: 2500 }, // 8 하단 중앙
+            { key: 'torii',           x: 2500, y: 2500 }, // 9 우하
 
-            // --- 상점가 클러스터 (좌중) ---
-            { key: 'hanok_shop',      x: 280,  y: 1200 },
-            { key: 'ramen',           x: 600,  y: 1200 },
-            { key: 'night_market',    x: 280,  y: 1550 },
-            { key: 'milktea',         x: 600,  y: 1550 },
-            { key: 'china_food',      x: 380,  y: 1750 },
-            { key: 'red_light',       x: 2350, y: 1450 }, // 토리이 옆 등롱
+            // === 미니어처 랜드마크 (10~13) — 메인 옆 액센트 ===
+            { key: 'statue_liberty',  x: 850,  y: 2700 }, // 분수(6) 옆 USA
+            { key: 'big_ben',         x: 2200, y: 1750 }, // 야시장(5) 옆 UK
+            { key: 'eiffel',          x: 2200, y: 2700 }, // 토리이(9) 옆 FR
+            { key: 'moai',            x: 200,  y: 2650 }, // 좌하 가장자리
 
-            // --- 글로벌 랜드마크 미니어처 (zone 액센트) ---
-            { key: 'statue_liberty',  x: 650,  y: 2500 }, // 모래사장 액센트
-            { key: 'big_ben',         x: 2520, y: 1900 }, // 우중 액센트
-            { key: 'eiffel',          x: 2400, y: 2650 }, // 잔디 정원 액센트
-            { key: 'moai',            x: 350,  y: 2650 }, // 모래사장 끝 (물에서 떨어뜨림)
+            // === 상점 (14~19) — 셀 안 메인 오브젝트 옆 ===
+            { key: 'boulangerie',     x: 2000, y: 2700 }, // 토리이(9) 옆 FR
+            { key: 'diner',           x: 850,  y: 2300 }, // 분수(6) 옆 US
+            { key: 'pub',             x: 2000, y: 1750 }, // 야시장(5) 옆 UK
+            { key: 'phone_booth',     x: 2750, y: 2100 }, // 야시장-토리이 사이 UK
+            { key: 'china_food',      x: 2200, y: 750  }, // 한옥상점(3) 옆 CN
+            { key: 'milktea',         x: 2750, y: 1300 }, // 한옥상점-야시장 사이 TW
 
-            // --- 작은 상점 (분산) ---
-            { key: 'boulangerie',     x: 2100, y: 2350 }, // 잔디 정원
-            { key: 'diner',           x: 480,  y: 2400 }, // 모래사장
-            { key: 'pub',             x: 1800, y: 2500 }, // 정원 가
-            { key: 'phone_booth',     x: 2700, y: 2100 }, // 우중 액센트
+            // === 작은 액센트 (20) ===
+            { key: 'red_light',       x: 2300, y: 2300 }, // 토리이(9) 옆 등롱
 
-            // --- 벚꽃 나무 (3개) ---
-            { key: 'sakura',          x: 1100, y: 1100 },
-            { key: 'sakura',          x: 1750, y: 1500 },
-            { key: 'sakura',          x: 2600, y: 2300 },
+            // === 벚꽃 (3개) — 자연 흩어짐 ===
+            { key: 'sakura',          x: 1100, y: 900  },
+            { key: 'sakura',          x: 1900, y: 1300 },
+            { key: 'sakura',          x: 1100, y: 2200 },
 
-            // --- 벤치 (2개) ---
-            { key: 'bench',           x: 1500, y: 800  },
-            { key: 'bench',           x: 1100, y: 1900 },
+            // === 벤치 (2개) ===
+            { key: 'bench',           x: 1300, y: 900  },
+            { key: 'bench',           x: 1700, y: 2200 },
 
-            // --- 가로등 (4개, 경로변) ---
-            { key: 'streetlight',     x: 900,  y: 1850 },
-            { key: 'streetlight',     x: 1700, y: 1850 },
-            { key: 'streetlight',     x: 2200, y: 1850 },
-            { key: 'streetlight',     x: 800,  y: 2300 },
+            // === 가로등 (4개, 셀 경계 경로변) ===
+            { key: 'streetlight',     x: 1000, y: 1000 },
+            { key: 'streetlight',     x: 2000, y: 1000 },
+            { key: 'streetlight',     x: 1000, y: 2000 },
+            { key: 'streetlight',     x: 2000, y: 2000 },
 
-            // --- 화단 (2개) ---
-            { key: 'flowers',         x: 2700, y: 2750 },
-            { key: 'flowers',         x: 1450, y: 2700 },
+            // === 화단 (2개) ===
+            { key: 'flowers',         x: 900,  y: 1200 },
+            { key: 'flowers',         x: 2100, y: 2200 },
 
-            // --- 안내판 ---
-            { key: 'map_sign',        x: 750,  y: 700  },
-            { key: 'arrow_sign',      x: 1100, y: 1800 }
+            // === 안내판 ===
+            { key: 'map_sign',        x: 800,  y: 300  }, // 입구(1) 옆
+            { key: 'arrow_sign',      x: 1500, y: 1050 }  // 그리드 갈림길
         ];
 
         // 키 입력 상태
@@ -283,6 +428,17 @@
 
         for(let i=0; i<20; i++) spawnCube();
 
+        // 시작 위치가 어느 interaction zone 안이면 그 zone을 미리 active로 설정
+        // → 게임 로드 직후 자동 팝업 트리거 방지. 사용자가 zone 밖으로 나갔다 다시 들어와야 팝업이 뜸.
+        for (const obj of objects) {
+            const def = objectDefs[obj.key];
+            if (!def.interaction) continue;
+            if (Math.hypot(player.x - obj.x, player.y - obj.y) < INTERACTION_RADIUS) {
+                activeZoneKey = obj.key;
+                break;
+            }
+        }
+
         // AABB 충돌 체크 함수 (반경 매개변수 추가)
         function checkCollision(nextX, nextY, radius) {
             if (nextX - radius < 0 || nextX + radius > WORLD_SIZE ||
@@ -311,9 +467,30 @@
             return false;
         }
 
+        // 1~9번 메인 오브젝트 진입 검사 (interaction 필드가 있는 것만)
+        function checkInteractionZones() {
+            if (popupOpen) return;
+            let foundZone = null;
+            for (const obj of objects) {
+                const def = objectDefs[obj.key];
+                if (!def.interaction) continue;
+                const dist = Math.hypot(player.x - obj.x, player.y - obj.y);
+                if (dist < INTERACTION_RADIUS) { foundZone = obj; break; }
+            }
+            if (foundZone && activeZoneKey !== foundZone.key) {
+                showPopup(foundZone);
+                activeZoneKey = foundZone.key;
+            } else if (!foundZone) {
+                activeZoneKey = null; // zone 밖으로 나가면 재트리거 가능
+            }
+        }
+
         // 게임 로직 업데이트
         function update() {
             frameCount++;
+
+            // 팝업 떠 있는 동안 게임 일시정지 (이동/봇/큐브 모두 멈춤)
+            if (popupOpen) return;
 
             // --- 플레이어 이동 로직 ---
             let dx = 0;
@@ -381,6 +558,9 @@
             camera.y = player.y - canvas.height / 2;
             camera.x = Math.max(0, Math.min(camera.x, WORLD_SIZE - canvas.width));
             camera.y = Math.max(0, Math.min(camera.y, WORLD_SIZE - canvas.height));
+
+            // 1~9 메인 오브젝트 진입 검사
+            checkInteractionZones();
         }
 
         // 오브젝트(건물/소품) 그리는 함수 — (x, y)는 발(footer) 위치

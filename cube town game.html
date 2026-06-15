@@ -474,9 +474,11 @@
         let zoomLevel = loadZoom();
 
         // 플레이어 객체
+        // 시작 위치: 입구 광장 빈 자리 (800, 800). WORLD/2=(1500,1500)은 red_bridge 충돌 박스 정중앙이라 갇힘.
+        // 추가로 findSafePlayerPosition()이 게임 로드 시 충돌 영역이면 자동으로 빈 자리로 이동.
         const player = {
-            x: WORLD_SIZE / 2,
-            y: WORLD_SIZE / 2,
+            x: 800,
+            y: 800,
             size: 15,
             speed: 6.552, // 이전 5.46의 +20% (누적: 6 → 4.2 → 5.46 → 6.552). 봇은 현재 속도 유지
             color: '#3b82f6',
@@ -562,6 +564,32 @@
                 break;
             }
         }
+
+        // === 시작 위치 안전 검사 ===
+        // 플레이어가 어떤 충돌 박스 안에 박혀 있으면 영구히 못 움직임. 나선형으로 빈 자리 검색.
+        // (오브젝트 좌표/충돌 반경 변경 시에도 자동 복구되는 안전망)
+        // checkCollision은 아래에 function 선언으로 정의됨 — hoisting되어 여기서 호출 가능.
+        function findSafePlayerPosition() {
+            if (!checkCollision(player.x, player.y, player.size)) return;
+            const startX = player.x, startY = player.y;
+            for (let r = 50; r <= 1000; r += 30) {
+                for (let a = 0; a < 360; a += 15) {
+                    const rad = a * Math.PI / 180;
+                    const tx = startX + Math.cos(rad) * r;
+                    const ty = startY + Math.sin(rad) * r;
+                    if (tx >= player.size && tx <= WORLD_SIZE - player.size &&
+                        ty >= player.size && ty <= WORLD_SIZE - player.size &&
+                        !checkCollision(tx, ty, player.size)) {
+                        console.log(`[Safety] 시작 위치 자동 이동: (${Math.round(startX)},${Math.round(startY)}) → (${Math.round(tx)},${Math.round(ty)})`);
+                        player.x = tx;
+                        player.y = ty;
+                        return;
+                    }
+                }
+            }
+            console.warn('[Safety] 안전한 빈 자리를 못 찾음 — 시작 위치 그대로');
+        }
+        findSafePlayerPosition();
 
         // AABB 충돌 체크 함수 (반경 매개변수 추가)
         function checkCollision(nextX, nextY, radius) {
@@ -736,9 +764,11 @@
             const drawH = drawSize * sy;
 
             // 그림자 (50% 축소: 가로 18 / 세로 8.25 — 캐릭터 발 폭과 유사한 단정한 크기)
+            // 봇은 그림자를 발에 더 가깝게 (y+8) → 공중에 떠 보이는 효과 감소. 플레이어는 기존 y+15 유지.
+            const shadowYOffset = isPlayer ? 15 : 8;
             ctx.fillStyle = 'rgba(0,0,0,0.55)';
             ctx.beginPath();
-            ctx.ellipse(x, y + 15, size * 1.2, size * 0.55, 0, 0, Math.PI * 2);
+            ctx.ellipse(x, y + shadowYOffset, size * 1.2, size * 0.55, 0, 0, Math.PI * 2);
             ctx.fill();
 
             // 캐릭터: 이미지 로드 완료 시 PNG, 미완료/실패 시 fallback 원형

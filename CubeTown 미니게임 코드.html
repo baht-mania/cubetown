@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>글로벌 관광 러너 미니게임</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <style>
+        body { margin: 0; background-color: #000; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        canvas { border: 4px solid #fff; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+
+<script>
+const config = {
+    type: Phaser.AUTO,
+    width: 480,
+    height: 800,
+    physics: {
+        default: 'arcade',
+        arcade: { gravity: { y: 0 }, debug: false }
+    },
+    scene: { preload: preload, create: create, update: update }
+};
+
+const game = new Phaser.Game(config);
+
+let player;
+let cursors;
+let obstacles;
+let items;
+let bg;
+let score = 0;
+let scoreText;
+let timerText;
+let timeLeft = 180; // 3분
+let gameTimer;
+let lives = 3;
+let livesText;
+let isGameOver = false;
+
+// 1. 그래픽 에셋 불러오기 (이미지 로딩)
+function preload() {
+    // 유저님이 올려주신 파일명과 정확히 일치하게 로드합니다.
+    this.load.image('bg_road', 'bg_road.png');
+    this.load.image('player', 'player.png');
+    this.load.image('obs_1', 'obs_1.png');
+    this.load.image('obs_2', 'obs_2.png');
+    this.load.image('obs_3', 'obs_3.png');
+    this.load.image('item_1', 'item_1.png');
+    this.load.image('item_2', 'item_2.png');
+}
+
+function create() {
+    // 2. 무한 스크롤 배경 설정
+    // TileSprite를 사용하면 이미지가 컨베이어 벨트처럼 무한히 연결되어 흘러갑니다.
+    bg = this.add.tileSprite(240, 400, 480, 800, 'bg_road');
+
+    // 3. 플레이어 캐릭터 생성
+    player = this.physics.add.sprite(240, 700, 'player');
+    player.setScale(0.12); // 원본 이미지가 크기 때문에 화면에 맞게 12%로 축소
+    player.body.setCollideWorldBounds(true);
+    
+    // 캐릭터의 실제 피격 범위(히트박스)를 살짝 좁혀서 억울하게 부딪히는 일 방지
+    player.body.setSize(player.width * 0.5, player.height * 0.8);
+
+    // 4. 장애물 및 아이템 그룹 생성
+    obstacles = this.physics.add.group();
+    items = this.physics.add.group();
+
+    cursors = this.input.keyboard.createCursorKeys();
+    
+    // 터치 조작
+    this.input.on('pointerdown', (pointer) => {
+        if (pointer.x < 240) {
+            player.x -= 80; 
+        } else {
+            player.x += 80; 
+        }
+    });
+
+    // 5. UI 설정
+    scoreText = this.add.text(16, 16, '점수: 0', { fontSize: '26px', fill: '#fff', fontStyle: 'bold', stroke: '#000', strokeThickness: 4 });
+    timerText = this.add.text(300, 16, '시간: 03:00', { fontSize: '26px', fill: '#fff', fontStyle: 'bold', stroke: '#000', strokeThickness: 4 });
+    livesText = this.add.text(16, 50, '❤️❤️❤️', { fontSize: '24px' });
+
+    gameTimer = this.time.addEvent({ delay: 1000, callback: updateTimer, callbackScope: this, loop: true });
+
+    // 난이도 상승을 반영한 생성 주기 (기존 사각형 대신 이미지 생성 로직으로 연결)
+    this.time.addEvent({ delay: 1200, callback: spawnObstacle, callbackScope: this, loop: true });
+    this.time.addEvent({ delay: 2000, callback: spawnItem, callbackScope: this, loop: true });
+
+    // 충돌 처리
+    this.physics.add.overlap(player, obstacles, hitObstacle, null, this);
+    this.physics.add.overlap(player, items, collectItem, null, this);
+}
+
+function update() {
+    if (isGameOver) return;
+
+    // 키보드 조작
+    if (cursors.left.isDown) player.x -= 6;
+    else if (cursors.right.isDown) player.x += 6;
+
+    // ⭐️ 배경 무한 스크롤 애니메이션 (아래로 3픽셀씩 이동)
+    bg.tilePositionY -= 3;
+
+    // 화면 아래로 벗어난 오브젝트 삭제
+    obstacles.children.iterate(function (child) {
+        if (child && child.y > 850) child.destroy();
+    });
+    items.children.iterate(function (child) {
+        if (child && child.y > 850) child.destroy();
+    });
+}
+
+// 6. 이미지 장애물 스폰
+function spawnObstacle() {
+    if (isGameOver) return;
+    let x = Phaser.Math.Between(60, 420);
+    
+    // 3가지 장애물 이미지 중 하나를 무작위로 선택
+    let obstacleKeys = ['obs_1', 'obs_2', 'obs_3'];
+    let randomObstacle = Phaser.Math.RND.pick(obstacleKeys);
+
+    let obstacle = this.physics.add.sprite(x, -100, randomObstacle);
+    obstacle.setScale(0.15); // 에셋 크기 축소
+    obstacle.body.setSize(obstacle.width * 0.6, obstacle.height * 0.8); // 히트박스 조절
+    obstacles.add(obstacle);
+    
+    // 시간 흐름에 따른 속도 증가 로직
+    obstacle.body.setVelocityY(200 + (180 - timeLeft) * 2.5); 
+}
+
+// 7. 이미지 아이템 스폰
+function spawnItem() {
+    if (isGameOver) return;
+    let x = Phaser.Math.Between(60, 420);
+    
+    // 2가지 아이템 중 무작위 선택
+    let itemKeys = ['item_1', 'item_2'];
+    let randomItem = Phaser.Math.RND.pick(itemKeys);
+
+    let item = this.physics.add.sprite(x, -50, randomItem);
+    item.setScale(0.12);
+    items.add(item);
+    
+    item.body.setVelocityY(150);
+}
+
+function collectItem(player, item) {
+    item.destroy();
+    score += 150;
+    scoreText.setText('점수: ' + score);
+}
+
+function hitObstacle(player, obstacle) {
+    obstacle.destroy();
+    lives--;
+    
+    let heartStr = '';
+    for(let i=0; i<lives; i++) heartStr += '❤️';
+    livesText.setText(heartStr ? heartStr : '💀');
+
+    this.cameras.main.shake(200, 0.03);
+
+    if (lives <= 0) endGame(false);
+}
+
+function updateTimer() {
+    if (isGameOver) return;
+    timeLeft--;
+    
+    let min = Math.floor(timeLeft / 60);
+    let sec = timeLeft % 60;
+    timerText.setText(`시간: ${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`);
+
+    if (timeLeft <= 0) endGame(true);
+}
+
+function endGame(isWin) {
+    isGameOver = true;
+    gameTimer.destroy();
+    player.body.setVelocity(0);
+    obstacles.clear(true, true);
+    items.clear(true, true);
+
+    let resultText = isWin ? 'STAGE CLEAR! 🎉' : 'GAME OVER 😢';
+    let scene = player.scene;
+    scene.add.text(100, 350, resultText, { fontSize: '40px', fill: '#ffeb3b', fontStyle: 'bold', stroke: '#000', strokeThickness: 6 });
+}
+</script>
+
+</body>
+</html>

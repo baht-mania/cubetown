@@ -192,6 +192,9 @@
         window.addEventListener('click', startBGM, { once: true });
 
         // === 건물 진입 팝업 ===
+        // POPUP_ENABLED: 전역 ON/OFF 스위치. false면 모든 팝업 트리거 중단 (interaction 필드는 그대로 유지).
+        // 이후 특정 오브젝트에만 적용하려면 → POPUP_ENABLED=true + objectDefs 필요한 곳만 interaction 유지/추가
+        const POPUP_ENABLED = false;
         const popupOverlay = document.getElementById('popup-overlay');
         const popupText    = document.getElementById('popup-text');
         const popupYes     = document.getElementById('popup-yes');
@@ -263,18 +266,18 @@
         // key → { src, w(표시 가로), h(표시 세로), collideRatio: [가로비, 세로비] }
         //   collideRatio가 [0,0]이면 통과 가능 (다리/소품/랜드마크 외곽 등)
         //   충돌 박스는 오브젝트의 발(footer) 부근 footprint만 잡음
-        // === interaction & noCollide 필드 ===
-        // - interaction: 캐릭터 진입 시 팝업 표시 (02·03·04·05·08·09만 유지, 01·06·07 제거)
-        // - noCollide: true면 통과 가능 (01 한옥문, 07 빨간 다리). 분수(06)는 충돌 유지
-        // - 충돌은 collideRatio 무시하고 모두 발 위치(x,y)에 반경 5px 원형 (사각 box 10×10) 일률 적용
+        // === interaction 필드 ===
+        // - interaction: 캐릭터 진입 시 팝업 정의 (코드는 유지하되 POPUP_ENABLED=false로 전역 비활성).
+        //   이후 다시 켜려면 아래 POPUP_ENABLED를 true로.
+        // - 사용자 요청으로 noCollide 플래그 제거 → 01~26 모두 충돌 (반경 30px)
         const objectDefs = {
-            hanok_gate:     { src: '01_korea_hanok_gate.png',     w: 550, h: 550, noCollide: true },
+            hanok_gate:     { src: '01_korea_hanok_gate.png',     w: 550, h: 550 },
             tourism_center: { src: '02_korea_tourism_center.png', w: 550, h: 550, interaction: { label: '한국여행센터', url: 'https://www.naver.com' } },
             hanok_shop:    { src: '03_korea_hanok_shop.png',     w: 380, h: 380, interaction: { label: '한옥상점',     url: 'https://www.naver.com' } },
             ramen:         { src: '04_japan_ramen.png',          w: 380, h: 380, interaction: { label: '라멘집',       url: 'https://www.naver.com' } },
             night_market:  { src: '05_taiwan_market.png',        w: 320, h: 320, interaction: { label: '야시장',       url: 'https://www.naver.com' } },
             fountain:      { src: '06_fountain.png',             w: 450, h: 450 },
-            red_bridge:    { src: '07_red_bridge.png',           w: 520, h: 400, noCollide: true },
+            red_bridge:    { src: '07_red_bridge.png',           w: 520, h: 400 },
             modern_gallery:{ src: '08_modern_gallery.png',       w: 600, h: 550, interaction: { label: '모던 갤러리',  url: 'https://www.naver.com' } },
             torii:         { src: '09_japan_torii.png',          w: 380, h: 420, interaction: { label: '토리이',       url: 'https://www.naver.com' } },
             statue_liberty:{ src: '10_us_statue_liberty.png',    w: 350, h: 420, collideRatio: [0.40, 0.25] },
@@ -475,7 +478,7 @@
             x: WORLD_SIZE / 2,
             y: WORLD_SIZE / 2,
             size: 15,
-            speed: 5.46, // 이전 4.2의 +30% (사용자 요청, 봇은 현재 속도 유지)
+            speed: 6.552, // 이전 5.46의 +20% (누적: 6 → 4.2 → 5.46 → 6.552). 봇은 현재 속도 유지
             color: '#3b82f6',
             name: '나',
             img: playerImg,
@@ -485,10 +488,9 @@
 
         // 장애물 (충돌 박스) - objects[] 의 collideRatio 값을 기반으로 자동 생성.
         // 발(footer) 좌표 기준 발 footprint만 충돌 → 큰 건물도 윗부분(지붕/탑신)은 통과 가능 = 시각적 자연
-        // 충돌 시스템: 모든 오브젝트 발 위치(x, y)에 반경 10px 원형 (사각 박스 20×20으로 근사)
-        // 반경 5px이 너무 작아 통과 누락 다수 발생 → 10px로 키워 모든 오브젝트(나무·건물·벤치·토리이 등)와 안정 충돌
-        // noCollide=true인 오브젝트(01 한옥문, 07 빨간 다리)는 통과 가능 → 스킵
-        const COLLIDE_RADIUS = 10;
+        // 충돌 시스템: 모든 오브젝트 발 위치(x, y)에 반경 30px 사각 박스 (60×60)
+        // 사용자 요청: 01~26 모두 충돌 (이전 noCollide 예외도 제거됨)
+        const COLLIDE_RADIUS = 30;
         const buildings = [];
         for (const obj of objects) {
             const def = objectDefs[obj.key];
@@ -590,7 +592,9 @@
         }
 
         // 1~9번 메인 오브젝트 진입 검사 (interaction 필드가 있는 것만)
+        // POPUP_ENABLED=false면 전체 트리거 중단 (코드는 살아 있으므로 true로 켜면 즉시 동작)
         function checkInteractionZones() {
+            if (!POPUP_ENABLED) return;
             if (popupOpen) return;
             let foundZone = null;
             for (const obj of objects) {

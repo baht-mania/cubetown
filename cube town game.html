@@ -639,8 +639,11 @@
             ctx.translate(-camera.x, -camera.y);
 
             // 배경 맵 이미지 (로드 완료 시) 또는 fallback 다크
+            // 채도·밝기 다운으로 오브젝트(voxel)·캐릭터(cel-shaded)와 톤 매칭 향상
             if (bgImg.complete && bgImg.naturalWidth > 0) {
+                ctx.filter = 'saturate(0.6) brightness(0.92)';
                 ctx.drawImage(bgImg, 0, 0, WORLD_SIZE, WORLD_SIZE);
+                ctx.filter = 'none';
             } else {
                 ctx.fillStyle = '#1e293b';
                 ctx.fillRect(0, 0, WORLD_SIZE, WORLD_SIZE);

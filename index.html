@@ -813,7 +813,8 @@
         // 사용자가 편집 모드에서 박스 그리기 도구(B 키)로 미세 조정 가능
         const COLLISION_TARGET_KEYS = new Set([
             'tourism_center', 'fountain', 'ramen', 'hanok_shop',
-            'eiffel', 'night_market', 'china_food', 'pub',
+            /* eiffel: 정중앙 에펠탑 충돌 비활성화 */
+            'night_market', 'china_food', 'pub',
             'diner', 'milktea', 'statue_liberty', 'boulangerie'
         ]);
         for (const obj of objects) {
@@ -916,26 +917,26 @@
         const botColors = ['#10b981', '#ec4899', '#8b5cf6', '#f97316', '#06b6d4'];
 
         const botNames = [
-            '지수',    // 1: 한복 가이드 (한국)
-            '유나',    // 2: K-pop 스타일 (한국)
-            '하나코',  // 3: 기모노 (일본)
-            '민준',    // 4: 비즈니스맨 (한국)
-            '메이링',  // 5: 치파오 (중국)
-            '웨이',    // 6: 여행자 (중국)
-            '메이',    // 7: I♥TAIWAN 로컬 (대만)
-            '마르코',  // 8: 국기 배낭족 (유럽)
-            '아마라',  // 9: 사진작가 (아프리카)
-            '노아',    // 10: 자연 탐험가 (서양)
-            '제이크',  // 11: 어반 스트리트 (서양)
-            '아서',    // 12: 신사 탐험가 (유럽)
-            '소피',    // 13: 파리지앵 (프랑스)
-            '클레르',  // 14: 제빵사 (프랑스)
-            '아미르',  // 15: 아랍 신사 (중동)
-            '파티마',  // 16: 히잡 여성 (말레이시아)
-            '레일라니',// 17: 하와이 관광객
-            '카이',    // 18: 열대 여행자 (동남아)
-            '지아',    // 19: 트래블 포토그래퍼 (라틴)
-            '코피',    // 20: 글로벌 탐험가 (아프리카)
+            'Ji-su',   // 1: 한복 가이드 (한국)
+            'Yuna',    // 2: K-pop 스타일 (한국)
+            'Hanako',  // 3: 기모노 (일본)
+            'Minjun',  // 4: 비즈니스맨 (한국)
+            'Meiling', // 5: 치파오 (중국)
+            'Wei',     // 6: 여행자 (중국)
+            'Mei',     // 7: I♥TAIWAN 로컬 (대만)
+            'Marco',   // 8: 국기 배낭족 (유럽)
+            'Amara',   // 9: 사진작가 (아프리카)
+            'Noah',    // 10: 자연 탐험가 (서양)
+            'Jake',    // 11: 어반 스트리트 (서양)
+            'Arthur',  // 12: 신사 탐험가 (유럽)
+            'Sophie',  // 13: 파리지앵 (프랑스)
+            'Claire',  // 14: 제빵사 (프랑스)
+            'Amir',    // 15: 아랍 신사 (중동)
+            'Fatima',  // 16: 히잡 여성 (말레이시아)
+            'Leilani', // 17: 하와이 관광객
+            'Kai',     // 18: 열대 여행자 (동남아)
+            'Zia',     // 19: 트래블 포토그래퍼 (라틴)
+            'Kofi',    // 20: 글로벌 탐험가 (아프리카)
         ];
 
         for(let i=0; i<NUM_BOTS; i++) {
@@ -1140,7 +1141,7 @@
                 }
 
                 // moving 상태에서 매우 낮은 확률로 갑자기 talking (간헐적 멈춤)
-                if (Math.random() < 0.0008) {
+                if (Math.random() < 0.0016) {
                     startTalking(bot);
                     return;
                 }
@@ -1150,8 +1151,8 @@
                 let dist = Math.sqrt(botDx*botDx + botDy*botDy);
 
                 if (dist < 10) {
-                    // target 도달: 50% 확률로 talking, 50% 즉시 새 target (불규칙)
-                    if (Math.random() < 0.5) {
+                    // target 도달: 75% 확률로 talking, 25% 즉시 새 target (불규칙)
+                    if (Math.random() < 0.75) {
                         startTalking(bot);
                     } else {
                         pickNewTarget(bot);

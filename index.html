@@ -356,19 +356,19 @@
             <p id="loading-title">CUBE TOWN</p>
             <p id="loading-sub">GLOBAL METAVERSE PLAZA</p>
             <div id="loading-bar-bg"><div id="loading-bar"></div></div>
-            <p id="loading-text">에셋 로딩 중... 0%</p>
+            <p id="loading-text">Loading assets... 0%</p>
         </div>
     </div>
 
     <div id="ui-layer">
         <div class="hud-box">
             <h1>CUBE TOWN</h1>
-            <p>보유 큐브: <span id="score-display">0</span></p>
+            <p>Owned Cubes: <span id="score-display">0</span></p>
         </div>
         <div class="hud-box controls">
-            <p>⌨️ <b>이동:</b> W, A, S, D 또는 방향키</p>
-            <p>🎯 <b>목표:</b> 마을 곳곳에 생성되는 큐브를 수집하세요!</p>
-            <p>🤖 <b>주민:</b> 다양한 국적의 멤버들이 CUBE TOWN에 존재합니다.</p>
+            <p>⌨️ <b>Move:</b> W, A, S, D or arrow keys</p>
+            <p>🎯 <b>Goal:</b> Collect the cubes that appear all over the village!</p>
+            <p>🤖 <b>Residents:</b> Members of various nationalities are part of CUBE TOWN.</p>
         </div>
     </div>
 
@@ -410,8 +410,8 @@
         <div id="popup">
             <p id="popup-text"></p>
             <div class="popup-buttons">
-                <button id="popup-yes">응. 이동할게</button>
-                <button id="popup-no">아니, 다른 곳으로 갈게</button>
+                <button id="popup-yes">Yes, I'll move there</button>
+                <button id="popup-no">No, I'll go somewhere else</button>
             </div>
         </div>
     </div>
@@ -421,14 +421,14 @@
         <div id="minigame-frame">
             <div id="minigame-header">
                 <h2>MINI GAME ZONE</h2>
-                <button id="minigame-close" title="닫기">×</button>
+                <button id="minigame-close" title="Close">×</button>
             </div>
             <div id="minigame-content">
                 <div id="minigame-placeholder">
-                    <strong>미니게임 준비 중</strong>
-                    별도 미니게임 코드를 <code>window.startMiniGame(onComplete)</code> 함수로 등록하면<br>
-                    이 자리에 자동 연결됩니다.<br><br>
-                    60초 후 자동 종료, 또는 × 버튼으로 즉시 닫기
+                    <strong>Mini Game Preparation</strong>
+                    Register your custom mini-game code with the <code>window.startMiniGame(onComplete)</code> function,<br>
+                    and it will be automatically connected here.<br><br>
+                    Automatically closes after 60 seconds, or close immediately with the × button.
                 </div>
             </div>
         </div>
@@ -437,25 +437,25 @@
     <!-- 편집 모드 HUD (E 키로 토글) -->
     <div id="edit-mode-hud" class="hud-box" style="display:none; position:fixed; top:20px; right:20px; max-width:280px; pointer-events:none;">
         <h1 style="color:#f59e0b; margin-bottom:8px;">[ EDIT MODE ]</h1>
-        <p style="margin:3px 0;"><b>E</b>: 편집 종료</p>
-        <p style="margin:3px 0;"><b>좌클릭+드래그</b>: 오브젝트 이동</p>
-        <p style="margin:3px 0;"><b>우클릭+드래그</b>: 카메라 이동</p>
-        <p style="margin:3px 0;"><b>방향키</b>: 1px (Shift: 10px)</p>
-        <p style="margin:3px 0;"><b>휠 / [</b> · <b>]</b>: 크기 조정 (Shift: 큰 단계)</p>
-        <p style="margin:3px 0;"><b>, / .</b>: 충돌 반경 조정 (Shift: 큰 단계)</p>
-        <p style="margin:3px 0;"><b>Delete</b>: 선택 오브젝트 제거</p>
-        <p style="margin:3px 0;"><b>R</b>: 기본 위치로 리셋</p>
-        <p style="margin:3px 0; color:#10b981;"><b>B</b>: 박스 그리기 모드 ON/OFF</p>
-        <p style="margin:3px 0; color:#10b981;"><b>좌클릭+드래그</b> (B 모드): 충돌 박스 추가</p>
-        <p style="margin:3px 0; color:#10b981;"><b>X</b> (B 모드): 마지막 박스 제거</p>
-        <p style="margin:3px 0;"><b>S</b>: objects[] + 박스 콘솔+클립보드 출력</p>
+        <p style="margin:3px 0;"><b>E</b>: Edit Mode Exit</p>
+        <p style="margin:3px 0;"><b>Left Click + Drag</b>: Move Object</p>
+        <p style="margin:3px 0;"><b>Right Click + Drag</b>: Move Camera</p>
+        <p style="margin:3px 0;"><b>Arrow Keys</b>: 1px (Shift: 10px)</p>
+        <p style="margin:3px 0;"><b>Scroll Wheel / [</b> · <b>]</b>: Resize (Shift: Larger Steps)</p>
+        <p style="margin:3px 0;"><b>, / .</b>: Adjust Collision Radius (Shift: Larger Steps)</p>
+        <p style="margin:3px 0;"><b>Delete</b>: Remove Selected Object</p>
+        <p style="margin:3px 0;"><b>R</b>: Reset to Default Position</p>
+        <p style="margin:3px 0; color:#10b981;"><b>B</b>: Box Drawing Mode ON/OFF</p>
+        <p style="margin:3px 0; color:#10b981;"><b>Left Click + Drag</b> (B Mode): Add Collision Box</p>
+        <p style="margin:3px 0; color:#10b981;"><b>X</b> (B Mode): Remove Last Box</p>
+        <p style="margin:3px 0;"><b>S</b>: Output objects[] + Boxes to Console + Clipboard</p>
         <div id="edit-selected" style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15); display:none;">
-            <p style="margin:3px 0;"><b style="color:#f59e0b;">선택:</b> <span id="edit-key"></span></p>
-            <p style="margin:3px 0;"><b style="color:#f59e0b;">좌표:</b> (<span id="edit-x"></span>, <span id="edit-y"></span>)</p>
-            <p style="margin:3px 0;"><b style="color:#f59e0b;">크기:</b> <span id="edit-scale">100%</span></p>
-            <p style="margin:3px 0;"><b style="color:#ef4444;">충돌:</b> <span id="edit-collide">30</span>px</p>
+            <p style="margin:3px 0;"><b style="color:#f59e0b;">Selected:</b> <span id="edit-key"></span></p>
+            <p style="margin:3px 0;"><b style="color:#f59e0b;">Position:</b> (<span id="edit-x"></span>, <span id="edit-y"></span>)</p>
+            <p style="margin:3px 0;"><b style="color:#f59e0b;">Scale:</b> <span id="edit-scale">100%</span></p>
+            <p style="margin:3px 0;"><b style="color:#ef4444;">Collision:</b> <span id="edit-collide">30</span>px</p>
         </div>
-        <p style="margin-top:10px; color:#10b981; font-size:11px;">자동 저장: <span id="save-time">대기 중</span></p>
+        <p style="margin-top:10px; color:#10b981; font-size:11px;">Auto-save: <span id="save-time">pending</span></p>
         <p style="margin:3px 0; color:#94a3b8; font-size:11px;">cursor: <span id="edit-mouse">0, 0</span></p>
     </div>
 
@@ -500,7 +500,7 @@
 
         function showPopup(obj) {
             const meta = objectDefs[obj.key].interaction;
-            popupText.innerHTML = `<strong>${meta.label}</strong>${withSubjectParticle(meta.label)} 이동하시겠습니까?`;
+            popupText.innerHTML = `Would you like to visit <strong>${meta.label}</strong>?`;
             currentPopupUrl = meta.url;
             popupOverlay.classList.add('show');
             popupOpen = true;
@@ -543,7 +543,7 @@
             const bar = document.getElementById('loading-bar');
             const txt = document.getElementById('loading-text');
             if (bar) bar.style.width = pct + '%';
-            if (txt) txt.textContent = `에셋 로딩 중... ${pct}%`;
+            if (txt) txt.textContent = `Loading assets... ${pct}%`;
             if (_loadedCount >= _TOTAL_IMAGES) _hideLoading();
         }
         function _trackImg(img) {
@@ -1331,28 +1331,9 @@
         // 아바타 그리는 공통 함수 (플레이어 및 봇 재사용)
         function drawAvatar(entity, isPlayer = false) {
             const { x, y, size, color, name, img, isMoving, bobPhase = 0 } = entity;
-            const drawSize = size * 2 * 4; // 원래 원 직경(size*2) 대비 4배 → 120px
+            const drawSize = size * 2 * 4;
 
-            // === B: 걷는 모션 (squash & stretch) ===
-            //   1) bobbing 진폭 절반 (이전 ±6 → ±3) : 미세한 발 디딤
-            //   2) scaleY squash : sin이 음수일 때(발이 땅에 닿는 순간) 캐릭터를 살짝 눌러서
-            //      "체중이 실리는" 시각 단서 제공. 발 위치(y+15)는 고정 — 머리 위로만 짧아짐
-            const phase = frameCount * 0.35 + bobPhase;
-            const sinV = Math.sin(phase);
-            const bobOffset = isMoving ? sinV * 3 : 0;
-            const sy = isMoving ? (1 - Math.max(0, -sinV) * 0.06) : 1; // 1.0 ~ 0.94
-            const drawH = drawSize * sy;
-
-            // 그림자 (50% 축소: 가로 18 / 세로 8.25 — 캐릭터 발 폭과 유사한 단정한 크기)
-            // 봇은 그림자를 발에 더 가깝게 (y+8) → 공중에 떠 보이는 효과 감소. 플레이어는 기존 y+15 유지.
-            const shadowYOffset = isPlayer ? 15 : 8;
-            ctx.fillStyle = 'rgba(0,0,0,0.55)';
-            ctx.beginPath();
-            ctx.ellipse(x, y + shadowYOffset, size * 1.2, size * 0.55, 0, 0, Math.PI * 2);
-            ctx.fill();
-
-            // 캐릭터: 이미지 로드 완료 시 PNG, 미완료/실패 시 fallback 원형
-            // 플레이어는 direction에 따라 playerImgs에서 선택; 봇은 entity.img 그대로
+            // [A] 이미지 선택 먼저 (비율 계산에 필요)
             let drawImg = img;
             let mirrorX = false;
             if (isPlayer) {
@@ -1364,15 +1345,39 @@
                 else                         drawImg = playerImgs.down;
             }
             const imgReady = drawImg && drawImg.complete && drawImg.naturalWidth > 0;
+
+            // [A] 이미지 원본 비율로 drawH 계산 (정사각형 강제 → 비율 왜곡 해결)
+            // 플레이어(나1~4): ~426×758 → aspect≈0.56 / 봇1-9: 1:1 / 봇10-20: ~0.667
+            const imgAspect = imgReady ? (drawImg.naturalWidth / drawImg.naturalHeight) : 1;
+
+            // 걷는 모션 (squash & stretch)
+            const phase = frameCount * 0.35 + bobPhase;
+            const sinV = Math.sin(phase);
+            const bobOffset = isMoving ? sinV * 3 : 0;
+            const sy = isMoving ? (1 - Math.max(0, -sinV) * 0.06) : 1; // 1.0 ~ 0.94
+            const drawH = (drawSize / imgAspect) * sy; // [A] 비율 반영
+
+            // [C] 발 앵커 비율 (alpha 분석 기준)
+            // 플레이어: 99.6%, 봇 1:1: 88.8%, 봇 2:3 세로형: 90%
+            const footPct = isPlayer ? 0.996 : (imgAspect >= 0.9 ? 0.888 : 0.90);
+
+            // [B+C] 그림자: 발 앵커(y+15) 고정 + drawSize 비례 크기
+            ctx.fillStyle = 'rgba(0,0,0,0.45)';
+            ctx.beginPath();
+            ctx.ellipse(x, y + 15, drawSize * 0.28, drawSize * 0.09, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 이미지 그리기: 발(imgTopY + drawH * footPct)이 y+15에 오도록 위치 계산
+            const imgTopY = y + 15 - drawH * footPct;
             if (imgReady) {
                 if (mirrorX) {
                     ctx.save();
                     ctx.translate(x, 0);
                     ctx.scale(-1, 1);
-                    ctx.drawImage(drawImg, -drawSize/2, y + 15 - drawH + bobOffset, drawSize, drawH);
+                    ctx.drawImage(drawImg, -drawSize/2, imgTopY + bobOffset, drawSize, drawH);
                     ctx.restore();
                 } else {
-                    ctx.drawImage(drawImg, x - drawSize/2, y + 15 - drawH + bobOffset, drawSize, drawH);
+                    ctx.drawImage(drawImg, x - drawSize/2, imgTopY + bobOffset, drawSize, drawH);
                 }
             } else {
                 ctx.fillStyle = color;
@@ -1384,8 +1389,8 @@
                 ctx.stroke();
             }
 
-            // 이름표 (캐릭터 머리 위, squash + bobOffset 따라감)
-            const labelY = imgReady ? (y + 15 - drawH - 5 + bobOffset) : (y - 20 + bobOffset);
+            // 이름표 (이미지 상단 5px 위)
+            const labelY = imgReady ? (imgTopY - 5 + bobOffset) : (y - 20 + bobOffset);
             ctx.save();
             ctx.font = isPlayer ? 'bold 13px sans-serif' : 'bold 12px sans-serif';
             ctx.textAlign = 'center';
@@ -1461,7 +1466,7 @@
                 ctx.fillText('MINI GAME ZONE', z.x, z.y - 5);
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
                 ctx.font = '12px sans-serif';
-                ctx.fillText('걸어 들어가면 자동 시작', z.x, z.y + 17);
+                ctx.fillText('Walk into it to start automatically', z.x, z.y + 17);
             }
 
             // === y-sort 드로어블: 오브젝트 + 큐브 + 봇 + 플레이어를 y 좌표 기준으로 정렬 후 그리기 ===
@@ -2063,19 +2068,19 @@
                 'overflow:hidden;background:rgba(15,23,42,0.6);'
             ].join('');
             guideEl.innerHTML = `
-                <div style="color:#38bdf8;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:2px;">⌨️ 조작 방법</div>
+                <div style="color:#38bdf8;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:2px;">⌨️ How to Use</div>
                 <div style="color:#cbd5e1;font-size:12px;line-height:1.75;">
-                    ← → 방향키<br>
-                    📱 좌/우 탭 (터치)
+                    ← → Arrow Keys<br>
+                    📱 Left/Right Tap (Touch)
                 </div>
-                <div style="color:#38bdf8;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-top:6px;margin-bottom:2px;">🎯 미션</div>
+                <div style="color:#38bdf8;font-size:11px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;margin-top:6px;margin-bottom:2px;">🎯 Mission</div>
                 <div style="color:#cbd5e1;font-size:12px;line-height:1.75;">
-                    아이템 먹으면 <span style="color:#f59e0b;font-weight:600;">+150점</span><br>
-                    장애물 피해 60초 버티기<br>
-                    목숨 3개 소진 시 종료
+                    When you pick up an item <span style="color:#f59e0b;font-weight:600;">+150점</span><br>
+                    Survive 60 seconds without hitting obstacles<br>
+                    Game ends when you lose all 3 lives
                 </div>
                 <div style="color:#94a3b8;font-size:11px;line-height:1.6;margin-top:auto;padding-top:10px;border-top:1px solid rgba(255,255,255,0.07);">
-                    💡 시간이 지날수록<br>장애물 속도가<br>빨라집니다
+                    💡 As time passes<br>obstacle speed increases<br>
                 </div>`;
             contentEl.appendChild(guideEl);
 

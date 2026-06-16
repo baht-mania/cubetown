@@ -534,8 +534,8 @@
         let frameCount = 0;
 
         // === 로딩 진행 추적 ===
-        // playerImg(1) + bgImg(1) + botImgs(20) + objectDefs(27) = 49
-        const _TOTAL_IMAGES = 49;
+        // playerImgs(4) + bgImg(1) + botImgs(20) + objectDefs(27) = 52
+        const _TOTAL_IMAGES = 52;
         let _loadedCount = 0;
         function _onImgLoad() {
             _loadedCount++;
@@ -561,10 +561,18 @@
         // 10초 타임아웃 (일부 이미지 실패해도 게임 시작)
         setTimeout(_hideLoading, 10000);
 
-        // 캐릭터 이미지 프리로드 (플레이어 1 + 봇 20 = 21장)
-        const playerImg = new Image();
-        playerImg.src = 'assets/avatars/0. 메인캐릭터.png';
-        _trackImg(playerImg);
+        // 플레이어 방향별 이미지 (나1:정면/S, 나2:좌/A, 나3:후방좌/W+A, 나4:후방우/W)
+        const playerImgs = {
+            down:    new Image(),  // 나1 — 정면
+            left:    new Image(),  // 나2 — 좌측 (우측은 캔버스 반전)
+            upLeft:  new Image(),  // 나3 — 후방 좌측
+            upRight: new Image(),  // 나4 — 후방 우측
+        };
+        playerImgs.down.src    = 'assets/avatars/네방향/나1.png';
+        playerImgs.left.src    = 'assets/avatars/네방향/나2.png';
+        playerImgs.upLeft.src  = 'assets/avatars/네방향/나3.png';
+        playerImgs.upRight.src = 'assets/avatars/네방향/나4.png';
+        Object.values(playerImgs).forEach(img => _trackImg(img));
         const botImgs = [];
         for (let i = 1; i <= 20; i++) {
             const img = new Image();
@@ -782,7 +790,8 @@
             speed: 6.552, // 이전 5.46의 +20% (누적: 6 → 4.2 → 5.46 → 6.552). 봇은 현재 속도 유지
             color: '#3b82f6',
             name: '나',
-            img: playerImg,
+            img: null,            // drawAvatar에서 playerImgs로 직접 선택
+            direction: 'down',    // 'down'|'left'|'right'|'upLeft'|'upRight'
             isMoving: false,
             bobPhase: Math.random() * Math.PI * 2 // 각 캐릭터의 보빙 위상차 (동기화 방지)
         };
@@ -1099,6 +1108,19 @@
             if (Math.abs(tdy) > 0.01 && !checkCollision(player.x, player.y + tdy, player.size)) player.y += tdy;
             player.isMoving = (player.x !== oldPx || player.y !== oldPy);
 
+            // 방향 추적: 키보드 + 조이스틱 입력 기준 (충돌로 막혀도 의도 방향 유지)
+            const _rdx = (keys['ArrowRight']||keys['KeyD'] ? 1:0) - (keys['ArrowLeft']||keys['KeyA'] ? 1:0)
+                        + (Math.abs(touchInput.dx) > 0.15 ? Math.sign(touchInput.dx) : 0);
+            const _rdy = (keys['ArrowDown']||keys['KeyS'] ? 1:0) - (keys['ArrowUp']||keys['KeyW'] ? 1:0)
+                        + (Math.abs(touchInput.dy) > 0.15 ? Math.sign(touchInput.dy) : 0);
+            if (_rdx !== 0 || _rdy !== 0) {
+                if      (_rdy > 0)              player.direction = 'down';
+                else if (_rdy < 0 && _rdx < 0)  player.direction = 'upLeft';
+                else if (_rdy < 0)              player.direction = 'upRight';
+                else if (_rdx < 0)              player.direction = 'left';
+                else                            player.direction = 'right';
+            }
+
             // --- 봇 이동 + 말풍선 상태 머신 ---
             // moving: 근처 무작위 target 향해 이동
             // talking: 위치 고정 + 3초 동안 외계어 말풍선
@@ -1329,10 +1351,28 @@
             ctx.fill();
 
             // 캐릭터: 이미지 로드 완료 시 PNG, 미완료/실패 시 fallback 원형
-            const imgReady = img && img.complete && img.naturalWidth > 0;
+            // 플레이어는 direction에 따라 playerImgs에서 선택; 봇은 entity.img 그대로
+            let drawImg = img;
+            let mirrorX = false;
+            if (isPlayer) {
+                const dir = entity.direction || 'down';
+                if      (dir === 'right')  { drawImg = playerImgs.left;    mirrorX = true; }
+                else if (dir === 'left')     drawImg = playerImgs.left;
+                else if (dir === 'upLeft')   drawImg = playerImgs.upLeft;
+                else if (dir === 'upRight')  drawImg = playerImgs.upRight;
+                else                         drawImg = playerImgs.down;
+            }
+            const imgReady = drawImg && drawImg.complete && drawImg.naturalWidth > 0;
             if (imgReady) {
-                // 발이 y+15 고정 + bobOffset, 높이는 squash로 짧아짐 (머리 위로만 줄어듦)
-                ctx.drawImage(img, x - drawSize/2, y + 15 - drawH + bobOffset, drawSize, drawH);
+                if (mirrorX) {
+                    ctx.save();
+                    ctx.translate(x, 0);
+                    ctx.scale(-1, 1);
+                    ctx.drawImage(drawImg, -drawSize/2, y + 15 - drawH + bobOffset, drawSize, drawH);
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(drawImg, x - drawSize/2, y + 15 - drawH + bobOffset, drawSize, drawH);
+                }
             } else {
                 ctx.fillStyle = color;
                 ctx.beginPath();

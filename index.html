@@ -1344,9 +1344,12 @@
             }
 
             // 이름표 (캐릭터 머리 위, squash + bobOffset 따라감)
+            const labelY = imgReady ? (y + 15 - drawH - 5 + bobOffset) : (y - 20 + bobOffset);
+            ctx.save();
             ctx.font = isPlayer ? 'bold 13px sans-serif' : 'bold 12px sans-serif';
             ctx.textAlign = 'center';
-            const labelY = imgReady ? (y + 15 - drawH - 5 + bobOffset) : (y - 20 + bobOffset);
+            ctx.textBaseline = 'alphabetic';
+            ctx.shadowBlur = 0;
             // 검정 외곽선 → 어떤 배경에서도 잘 보임
             ctx.lineWidth = 3;
             ctx.strokeStyle = 'rgba(0,0,0,0.9)';
@@ -1354,6 +1357,7 @@
             ctx.strokeText(name, x, labelY);
             ctx.fillStyle = isPlayer ? '#38bdf8' : '#ffffff';
             ctx.fillText(name, x, labelY);
+            ctx.restore();
 
             // 말풍선 (봇이 talking 상태일 때만, 이름표 위쪽으로)
             if (!isPlayer && entity.state === 'talking' && entity.talkText) {

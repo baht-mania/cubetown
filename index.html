@@ -786,7 +786,7 @@
         const player = {
             x: 800,
             y: 800,
-            size: 15,
+            size: 12,
             speed: 6.552, // 이전 5.46의 +20% (누적: 6 → 4.2 → 5.46 → 6.552). 봇은 현재 속도 유지
             color: '#3b82f6',
             name: '나',
@@ -942,7 +942,7 @@
             bots.push({
                 x: Math.random() * (WORLD_SIZE - 100) + 50,
                 y: Math.random() * (WORLD_SIZE - 100) + 50,
-                size: 15,
+                size: 12,
                 speed: 2 + Math.random() * 2, // 2 ~ 4의 속도
                 color: botColors[Math.floor(Math.random() * botColors.length)],
                 name: botNames[i],

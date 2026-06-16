@@ -1268,14 +1268,41 @@
         // 큐브 그리는 함수 (z-sort에 포함시키기 위해 분리)
         function drawCube(cube) {
             const bob = Math.sin((frameCount * 0.05) + cube.bobOffset) * 5;
+            const cx = cube.x;
+            const cy = cube.y + bob;
+
+            // 큐브 본체 (밝은 시안 + 강한 글로우)
             ctx.save();
-            ctx.translate(cube.x, cube.y + bob);
+            ctx.translate(cx, cy);
             ctx.rotate(frameCount * 0.02 + cube.bobOffset);
-            ctx.fillStyle = cube.color;
-            ctx.shadowColor = cube.color;
-            ctx.shadowBlur = 15;
+            ctx.fillStyle = '#00e5ff';
+            ctx.shadowColor = '#00e5ff';
+            ctx.shadowBlur = 22;
             ctx.fillRect(-cube.size/2, -cube.size/2, cube.size, cube.size);
+            // 내부 밝은 하이라이트
+            ctx.fillStyle = 'rgba(255,255,255,0.45)';
+            ctx.shadowBlur = 0;
+            ctx.fillRect(-cube.size/2, -cube.size/2, cube.size * 0.5, cube.size * 0.5);
             ctx.restore();
+
+            // 반짝이 파티클 (5개, 큐브 주변 공전)
+            const SPARKS = 5;
+            for (let s = 0; s < SPARKS; s++) {
+                const angle = (frameCount * 0.06 + cube.bobOffset + s * (Math.PI * 2 / SPARKS)) % (Math.PI * 2);
+                const r = cube.size * 1.6 + Math.sin(frameCount * 0.12 + s * 1.7) * 3;
+                const sx = cx + Math.cos(angle) * r;
+                const sy = cy + Math.sin(angle) * r * 0.55;
+                const alpha = (Math.sin(frameCount * 0.18 + s * 1.3) + 1) / 2;
+                ctx.save();
+                ctx.globalAlpha = alpha * 0.95;
+                ctx.fillStyle = s % 2 === 0 ? '#ffffff' : '#00e5ff';
+                ctx.shadowColor = '#00e5ff';
+                ctx.shadowBlur = 8;
+                ctx.beginPath();
+                ctx.arc(sx, sy, s % 3 === 0 ? 2.5 : 1.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
         }
 
         // 아바타 그리는 공통 함수 (플레이어 및 봇 재사용)
@@ -1317,10 +1344,15 @@
             }
 
             // 이름표 (캐릭터 머리 위, squash + bobOffset 따라감)
-            ctx.fillStyle = isPlayer ? '#38bdf8' : '#94a3b8';
-            ctx.font = isPlayer ? 'bold 12px sans-serif' : '11px sans-serif';
+            ctx.font = isPlayer ? 'bold 13px sans-serif' : 'bold 12px sans-serif';
             ctx.textAlign = 'center';
             const labelY = imgReady ? (y + 15 - drawH - 5 + bobOffset) : (y - 20 + bobOffset);
+            // 검정 외곽선 → 어떤 배경에서도 잘 보임
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = 'rgba(0,0,0,0.9)';
+            ctx.lineJoin = 'round';
+            ctx.strokeText(name, x, labelY);
+            ctx.fillStyle = isPlayer ? '#38bdf8' : '#ffffff';
             ctx.fillText(name, x, labelY);
 
             // 말풍선 (봇이 talking 상태일 때만, 이름표 위쪽으로)

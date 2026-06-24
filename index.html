@@ -346,6 +346,36 @@
             border-radius: 3px; transition: width 0.25s ease;
         }
         #loading-text { color: #64748b; font-size: 12px; margin: 0; }
+
+        /* === 언어 선택 버튼 === */
+        #lang-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 6px;
+            pointer-events: all;
+        }
+        .lang-btn {
+            background: rgba(15, 23, 42, 0.80);
+            border: 1px solid rgba(255, 255, 255, 0.20);
+            backdrop-filter: blur(10px);
+            color: #94a3b8;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+            font-family: inherit;
+        }
+        .lang-btn:hover { background: rgba(56, 189, 248, 0.15); color: #38bdf8; }
+        .lang-btn.active {
+            background: rgba(56, 189, 248, 0.20);
+            border-color: #38bdf8;
+            color: #38bdf8;
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
@@ -360,15 +390,21 @@
         </div>
     </div>
 
+    <!-- 언어 선택 버튼 -->
+    <div id="lang-toggle">
+        <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" id="lang-ja" onclick="setLang('ja')">JP</button>
+    </div>
+
     <div id="ui-layer">
         <div class="hud-box">
             <h1>CUBE TOWN</h1>
-            <p>Owned Cubes: <span id="score-display">0</span></p>
+            <p><span data-i18n="hudScore">Owned Cubes:</span> <span id="score-display">0</span></p>
         </div>
         <div class="hud-box controls">
-            <p>⌨️ <b>Move:</b> W, A, S, D or arrow keys</p>
-            <p>🎯 <b>Goal:</b> Collect the cubes that appear all over the village!</p>
-            <p>🤖 <b>Residents:</b> Members of various nationalities are part of CUBE TOWN.</p>
+            <p data-i18n="hudMove">⌨️ <b>Move:</b> W, A, S, D or arrow keys</p>
+            <p data-i18n="hudGoal">🎯 <b>Goal:</b> Collect the cubes that appear all over the village!</p>
+            <p data-i18n="hudResidents">🤖 <b>Residents:</b> Members of various nationalities are part of CUBE TOWN.</p>
         </div>
     </div>
 
@@ -410,8 +446,8 @@
         <div id="popup">
             <p id="popup-text"></p>
             <div class="popup-buttons">
-                <button id="popup-yes">Yes, I'll move there</button>
-                <button id="popup-no">No, I'll go somewhere else</button>
+                <button id="popup-yes" data-i18n="popupYes">Yes, I'll move there</button>
+                <button id="popup-no" data-i18n="popupNo">No, I'll go somewhere else</button>
             </div>
         </div>
     </div>
@@ -464,6 +500,52 @@
         const ctx = canvas.getContext('2d');
         ctx.imageSmoothingEnabled = false; // 픽셀룩 보존
 
+        // === 다국어 (i18n) ===
+        const I18N = {
+            en: {
+                hudScore:     'Owned Cubes:',
+                hudMove:      '⌨️ <b>Move:</b> W, A, S, D or arrow keys',
+                hudGoal:      '🎯 <b>Goal:</b> Collect the cubes that appear all over the village!',
+                hudResidents: '🤖 <b>Residents:</b> Members of various nationalities are part of CUBE TOWN.',
+                popupYes:     "Yes, I'll move there",
+                popupNo:      "No, I'll go somewhere else",
+                popupQuestion: (label) => `Would you like to visit <strong>${label}</strong>?`,
+            },
+            ja: {
+                hudScore:     '取得キューブ:',
+                hudMove:      '⌨️ <b>移動:</b> W・A・S・D または矢印キー',
+                hudGoal:      '🎯 <b>目標:</b> 村中に出現するキューブを集めよう！',
+                hudResidents: '🤖 <b>住民:</b> 様々な国籍のメンバーがCUBE TOWNに参加しています。',
+                popupYes:     '行ってみる',
+                popupNo:      '別の場所へ行く',
+                popupQuestion: (label) => `<strong>${label}</strong>に行きますか？`,
+            }
+        };
+
+        const _navLang = (navigator.language || 'en').toLowerCase();
+        let currentLang = _navLang.startsWith('ja') ? 'ja' : 'en';
+
+        function t(key, ...args) {
+            const val = I18N[currentLang][key];
+            return typeof val === 'function' ? val(...args) : (val || '');
+        }
+
+        function applyLang() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (I18N[currentLang][key] !== undefined && typeof I18N[currentLang][key] !== 'function') {
+                    el.innerHTML = I18N[currentLang][key];
+                }
+            });
+            document.getElementById('lang-en').classList.toggle('active', currentLang === 'en');
+            document.getElementById('lang-ja').classList.toggle('active', currentLang === 'ja');
+        }
+
+        function setLang(lang) {
+            currentLang = lang;
+            applyLang();
+        }
+
         // === BGM ===
         // 브라우저 자동재생 정책 때문에 첫 사용자 인터랙션(키/클릭) 시 재생 시작
         const bgm = document.getElementById('bgm');
@@ -500,7 +582,7 @@
 
         function showPopup(obj) {
             const meta = objectDefs[obj.key].interaction;
-            popupText.innerHTML = `Would you like to visit <strong>${meta.label}</strong>?`;
+            popupText.innerHTML = t('popupQuestion', meta.label);
             currentPopupUrl = meta.url;
             popupOverlay.classList.add('show');
             popupOpen = true;
@@ -787,7 +869,7 @@
             size: 10,
             speed: 6.552, // 이전 5.46의 +20% (누적: 6 → 4.2 → 5.46 → 6.552). 봇은 현재 속도 유지
             color: '#3b82f6',
-            name: 'Andy',
+            name: 'Me',
             img: null,            // drawAvatar에서 playerImgs로 직접 선택
             direction: 'down',    // 'down'|'left'|'right'|'upLeft'|'upRight'
             isMoving: false,
@@ -819,8 +901,8 @@
             if (!COLLISION_TARGET_KEYS.has(obj.key)) continue;
             const def = objectDefs[obj.key];
             const s = obj.scale || 1;
-            const bw = def.w * s * 0.75;
-            const bh = def.h * s * 0.75;
+            const bw = def.w * s * 0.60;
+            const bh = def.h * s * 0.60;
             MANUAL_COLLISION_BOXES.push({
                 x: obj.x - bw / 2,
                 y: obj.y - bh * 0.95,
@@ -936,6 +1018,29 @@
             'Zia',     // 19: 트래블 포토그래퍼 (라틴)
             'Kofi',    // 20: 글로벌 탐험가 (아프리카)
         ];
+        // 아시아계(한/일/중/대만/동남아/중동/말레이시아) → 'ja', 그 외 → 'en'
+        const botLangs = [
+            'ja', // Ji-su
+            'ja', // Yuna
+            'ja', // Hanako
+            'ja', // Minjun
+            'ja', // Meiling
+            'ja', // Wei
+            'ja', // Mei
+            'en', // Marco
+            'en', // Amara
+            'en', // Noah
+            'en', // Jake
+            'en', // Arthur
+            'en', // Sophie
+            'en', // Claire
+            'ja', // Amir (중동)
+            'ja', // Fatima (말레이시아)
+            'en', // Leilani (하와이)
+            'ja', // Kai (동남아)
+            'en', // Zia (라틴)
+            'en', // Kofi (아프리카)
+        ];
 
         for(let i=0; i<NUM_BOTS; i++) {
             bots.push({
@@ -945,6 +1050,7 @@
                 speed: 2 + Math.random() * 2, // 2 ~ 4의 속도
                 color: botColors[Math.floor(Math.random() * botColors.length)],
                 name: botNames[i],
+                lang: botLangs[i],
                 targetX: Math.random() * WORLD_SIZE,
                 targetY: Math.random() * WORLD_SIZE,
                 img: botImgs[i], // i=0 → 캐릭터1.png, i=19 → 캐릭터20.png 순서대로 할당
@@ -1211,21 +1317,23 @@
         }
 
         // === 봇 행동 헬퍼 ===
-        // 외계어 생성: 자음 클러스터 위주 음절 풀 → 1~2 단어 × 1~2 음절 + 가끔 구두점
-        const ALIEN_SYLLABLES = ['zk','fnq','blg','rnp','shtn','klop','vrk','mzul','thrak','qpl','wrr','zix','glor','kvar','nyx','plox','brzz','krn','mrk','gth','lor','klar','mool','ree','oo','aii'];
-        const ALIEN_PUNCT = ['!','?','...','*','#'];
-        function generateAlienText() {
-            const wordCount = 1 + Math.floor(Math.random() * 2);
-            const words = [];
-            for (let i = 0; i < wordCount; i++) {
-                let w = '';
-                const sylCount = 1 + Math.floor(Math.random() * 2);
-                for (let j = 0; j < sylCount; j++) {
-                    w += ALIEN_SYLLABLES[Math.floor(Math.random() * ALIEN_SYLLABLES.length)];
-                }
-                words.push(w);
-            }
-            return words.join(' ') + (Math.random() < 0.5 ? ALIEN_PUNCT[Math.floor(Math.random() * ALIEN_PUNCT.length)] : '');
+        const EN_PHRASES = [
+            'Hello there!', 'Great day!', 'Nice to meet you!', 'How are you?',
+            'Looks amazing!', 'Wow!', 'Thank you!', 'See you later!',
+            'Having fun!', 'Beautiful here!', 'Check this out!', 'Awesome!',
+            'Incredible!', 'So cool!', 'Love this place!', 'Fantastic!',
+            'Greetings!', 'Wonderful!', 'Lovely day!', 'What a view!'
+        ];
+        const JA_PHRASES = [
+            'こんにちは！', 'いい天気！', 'よろしく！', 'すごいね！',
+            'ありがとう！', 'また会おう！', '楽しい！', 'きれい！',
+            'わあ！', 'やった！', '素晴らしい！', '面白い！',
+            '最高！', 'いいですね！', '素敵！', 'びっくり！',
+            'おはよう！', 'いらっしゃい！', '見て！', '感動的！'
+        ];
+        function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+        function generateBotText(lang) {
+            return lang === 'ja' ? pick(JA_PHRASES) : pick(EN_PHRASES);
         }
 
         // 봇 현재 위치 기준 반경 200~600px 무작위 방향으로 새 target 설정 (불규칙 wandering)
@@ -1239,7 +1347,7 @@
         function startTalking(bot) {
             bot.state = 'talking';
             bot.talkUntil = Date.now() + 3000; // 3초
-            bot.talkText = generateAlienText();
+            bot.talkText = generateBotText(bot.lang);
         }
 
         // 말풍선 그리기 (캐릭터 머리 위)
@@ -2261,6 +2369,7 @@
             draw();
             requestAnimationFrame(gameLoop);
         }
+        applyLang();
         requestAnimationFrame(ts => { _lastFrameTime = ts; requestAnimationFrame(gameLoop); });
     </script>
 </body>

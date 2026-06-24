@@ -423,7 +423,7 @@
         <div class="kanban-grid">
             <div class="kanban-column col-company">
                 <div class="kanban-col-title">Company</div>
-                <div class="kanban-card">SER Co., Ltd.</div>
+                <div class="kanban-card">P.M.G. Company</div>
             </div>
             <div class="kanban-column col-ceo">
                 <div class="kanban-col-title">Contact</div>
@@ -1320,18 +1320,48 @@
 
         // === 봇 행동 헬퍼 ===
         const EN_PHRASES = [
-            'Hello there!', 'Great day!', 'Nice to meet you!', 'How are you?',
-            'Looks amazing!', 'Wow!', 'Thank you!', 'See you later!',
-            'Having fun!', 'Beautiful here!', 'Check this out!', 'Awesome!',
-            'Incredible!', 'So cool!', 'Love this place!', 'Fantastic!',
-            'Greetings!', 'Wonderful!', 'Lovely day!', 'What a view!'
+            // 인사
+            'Hey!', 'Oh, hey!', 'Yo!', 'Morning!', 'Howdy!',
+            // 질문/대화
+            'Been here long?', 'Know any good spots around here?', 'Where are you headed?',
+            'Hot today, right?', 'You lost too?', 'First time here?',
+            // 관찰/독백
+            'The fountain looks great today.', 'Smells like something good nearby.',
+            'Getting pretty crowded.', 'Nice breeze today.', 'Man, my feet hurt.',
+            'Almost lost my map!', 'Should\'ve brought sunscreen.',
+            // 반응
+            'Oh wow, look at that!', 'No way!', 'Ha, classic.', 'Can\'t believe it.',
+            'Wait, seriously?', 'Didn\'t see that coming.',
+            // 감탄
+            'This place never gets old.', 'Best trip ever.', 'Love the energy here!',
+            'Finally made it!', 'So worth it.', 'This is unreal.',
+            // 음식/일상
+            'Where\'s the ramen shop?', 'I could go for some food right now.',
+            'Coffee would be nice...', 'Forgot my camera. Again.',
+            // 짧은 감탄사
+            'Whoa!', 'Heh.', 'Nice.', 'Woah, okay!', 'Wild.',
         ];
         const JA_PHRASES = [
-            'こんにちは！', 'いい天気！', 'よろしく！', 'すごいね！',
-            'ありがとう！', 'また会おう！', '楽しい！', 'きれい！',
-            'わあ！', 'やった！', '素晴らしい！', '面白い！',
-            '最高！', 'いいですね！', '素敵！', 'びっくり！',
-            'おはよう！', 'いらっしゃい！', '見て！', '感動的！'
+            // 인사
+            'あ、こんにちは！', 'やあ！', 'お疲れ！', 'よっ！', 'どうも！',
+            // 질문/대화
+            '道わかる？', 'この辺詳しい？', 'どこ行くの？',
+            '暑くない？', '迷子？', 'ここ初めて？',
+            // 관찰/독백
+            '人が多いね〜', 'いい風だなあ', 'お腹空いてきた',
+            '写真撮ろうかな', '足が痛い…', 'マップ忘れた！',
+            '日焼けしそう…',
+            // 반응
+            'え、マジで！', '嘘でしょ！', 'やばい！', 'ほんとに？',
+            'それはびっくり。', 'まさか…',
+            // 감탄
+            'ここ最高だな。', '来てよかった！', 'また来たい！',
+            'やっと着いた！', '来た甲斐あった。', '夢みたい。',
+            // 음식/일상
+            'ラーメン食べたい…', 'なんかいい匂い。',
+            'コーヒー飲みたい', 'カメラ忘れた。また。',
+            // 짧은 감탄사
+            'おお！', 'へえ。', 'なるほど。', 'えっ！', 'うわ〜。',
         ];
         function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
         function generateBotText(lang) {

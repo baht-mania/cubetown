@@ -131,14 +131,14 @@
             background: rgba(15, 23, 42, 0.90);
             border-top: 1px solid rgba(255, 255, 255, 0.12);
             backdrop-filter: blur(12px);
-            padding: 8px 24px;
+            padding: 16px 24px;
             box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.4);
             pointer-events: none;
             z-index: 10;
             display: flex;
             align-items: center;
             gap: 16px;
-            min-height: 48px;
+            min-height: 96px;
             box-sizing: border-box;
         }
         .kanban-header {
@@ -427,11 +427,11 @@
             </div>
             <div class="kanban-column col-ceo">
                 <div class="kanban-col-title">Contact</div>
-                <div class="kanban-card">블라블라@블라블라.com</div>
+                <div class="kanban-card">kevkang@metaxc.jp</div>
             </div>
             <div class="kanban-column col-address">
                 <div class="kanban-col-title">Address</div>
-                <div class="kanban-card">A122, 7F, 11-9, Teheran-ro 77-gil, Gangnam-gu, Seoul, Republic of Korea</div>
+                <div class="kanban-card" data-i18n="address">C703, 8F, 16, Pangyoyeok-ro 192beon-gil, Bundang-gu, Seongnam-si, Gyeonggi-do, Republic of Korea</div>
             </div>
         </div>
     </div>
@@ -510,6 +510,7 @@
                 popupYes:     "Yes, I'll move there",
                 popupNo:      "No, I'll go somewhere else",
                 popupQuestion: (label) => `Would you like to visit <strong>${label}</strong>?`,
+                address:      'C703, 8F, 16, Pangyoyeok-ro 192beon-gil, Bundang-gu, Seongnam-si, Gyeonggi-do, Republic of Korea',
             },
             ja: {
                 hudScore:     '取得キューブ:',
@@ -519,6 +520,7 @@
                 popupYes:     '行ってみる',
                 popupNo:      '別の場所へ行く',
                 popupQuestion: (label) => `<strong>${label}</strong>に行きますか？`,
+                address:      '京畿道城南市盆唐区板橋ヨク路192番キル8階16C703',
             }
         };
 

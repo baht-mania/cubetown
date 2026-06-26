@@ -772,6 +772,7 @@
                 signupCancel: 'Cancel',
                 signupIdAvail:'Username is available.',
                 signupRefErr: 'Referral code is incorrect.',
+                loginRequired:'Please sign up to use this service.',
             },
             ja: {
                 hudScore:     '取得キューブ:',
@@ -802,6 +803,7 @@
                 signupCancel: 'キャンセル',
                 signupIdAvail:'使用可能なユーザー名です。',
                 signupRefErr: '紹介コードが正しくありません。',
+                loginRequired:'会員登録後にご利用ください。',
             }
         };
 
@@ -919,7 +921,7 @@
 
         document.getElementById('login-btn').addEventListener('click', () => {
             const toast = document.createElement('div');
-            toast.textContent = '회원가입 후 이용하세요';
+            toast.textContent = t('loginRequired');
             Object.assign(toast.style, {
                 position: 'fixed', left: '50%', top: '50%',
                 transform: 'translate(-50%, -50%)',

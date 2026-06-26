@@ -347,6 +347,52 @@
         }
         #loading-text { color: #64748b; font-size: 12px; margin: 0; }
 
+        /* === 편집 모드 팔레트 === */
+        #edit-palette {
+            position: fixed;
+            top: 20px;
+            right: 320px;
+            background: rgba(15, 23, 42, 0.92);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 10px 12px;
+            display: none;
+            z-index: 200;
+            max-height: 82vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            width: 220px;
+        }
+        #edit-palette.show { display: block; }
+        #edit-palette h3 {
+            color: #f59e0b;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin: 0 0 8px;
+            text-align: center;
+        }
+        .pal-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 5px;
+        }
+        .pal-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid transparent;
+            border-radius: 8px;
+            padding: 4px;
+            cursor: pointer;
+            text-align: center;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .pal-item:hover { background: rgba(56,189,248,0.12); border-color: rgba(56,189,248,0.35); }
+        .pal-item.active { border-color: #38bdf8; background: rgba(56,189,248,0.18); }
+        .pal-item img { display: block; width: 54px; height: 54px; object-fit: contain; margin: 0 auto; }
+        .pal-item span { font-size: 9px; color: #94a3b8; display: block; margin-top: 3px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+
         /* === 언어 선택 버튼 === */
         #lang-toggle {
             position: fixed;
@@ -470,6 +516,12 @@
         </div>
     </div>
 
+    <!-- 편집 모드 오브젝트 팔레트 -->
+    <div id="edit-palette">
+        <h3>[ ADD OBJECT ]</h3>
+        <div class="pal-grid" id="pal-grid"></div>
+    </div>
+
     <!-- 편집 모드 HUD (E 키로 토글) -->
     <div id="edit-mode-hud" class="hud-box" style="display:none; position:fixed; top:20px; right:20px; max-width:280px; pointer-events:none;">
         <h1 style="color:#f59e0b; margin-bottom:8px;">[ EDIT MODE ]</h1>
@@ -563,7 +615,7 @@
         // === 건물 진입 팝업 ===
         // POPUP_ENABLED: 전역 ON/OFF 스위치. false면 모든 팝업 트리거 중단 (interaction 필드는 그대로 유지).
         // 이후 특정 오브젝트에만 적용하려면 → POPUP_ENABLED=true + objectDefs 필요한 곳만 interaction 유지/추가
-        const POPUP_ENABLED = false;
+        const POPUP_ENABLED = true;
         const popupOverlay = document.getElementById('popup-overlay');
         const popupText    = document.getElementById('popup-text');
         const popupYes     = document.getElementById('popup-yes');
@@ -618,8 +670,8 @@
         let frameCount = 0;
 
         // === 로딩 진행 추적 ===
-        // playerImgs(4) + bgImg(1) + botImgs(20) + objectDefs(27) = 52
-        const _TOTAL_IMAGES = 52;
+        // playerImgs(4) + bgImg(1) + botImgs(20) + objectDefs(32) = 57
+        const _TOTAL_IMAGES = 57;
         let _loadedCount = 0;
         function _onImgLoad() {
             _loadedCount++;
@@ -680,21 +732,21 @@
         // - 사용자 요청으로 noCollide 플래그 제거 → 01~26 모두 충돌 (반경 30px)
         const objectDefs = {
             hanok_gate:     { src: '01_korea_hanok_gate.png',     w: 550, h: 550 },
-            tourism_center: { src: '02_korea_tourism_center.png', w: 550, h: 550, interaction: { label: '한국여행센터', url: 'https://www.naver.com' } },
-            hanok_shop:    { src: '03_korea_hanok_shop.png',     w: 380, h: 380, interaction: { label: '한옥상점',     url: 'https://www.naver.com' } },
-            ramen:         { src: '04_japan_ramen.png',          w: 380, h: 380, interaction: { label: '라멘집',       url: 'https://www.naver.com' } },
-            night_market:  { src: '05_taiwan_market.png',        w: 320, h: 320, interaction: { label: '야시장',       url: 'https://www.naver.com' } },
+            tourism_center: { src: '02_korea_tourism_center.png', w: 550, h: 550, interaction: { label: 'キャッシュレスで韓国を旅しよう', url: 'https://www.wowpass.io/ja' } },
+            hanok_shop:    { src: '03_korea_hanok_shop.png',     w: 380, h: 380, interaction: { label: 'Olive young',     url: 'https://global.oliveyoung.com/' } },
+            ramen:         { src: '04_japan_ramen.png',          w: 380, h: 380, interaction: { label: 'Souvenir Shop',       url: 'https://global.oliveyoung.com/' } },
+            night_market:  { src: '05_taiwan_market.png',        w: 320, h: 320 },
             fountain:      { src: '06_fountain.png',             w: 450, h: 450 },
             red_bridge:    { src: '07_red_bridge.png',           w: 520, h: 400 },
             modern_gallery:{ src: '08_modern_gallery.png',       w: 600, h: 550, interaction: { label: '모던 갤러리',  url: 'https://www.naver.com' } },
-            torii:         { src: '09_japan_torii.png',          w: 380, h: 420, interaction: { label: '토리이',       url: 'https://www.naver.com' } },
+            torii:         { src: '09_japan_torii.png',          w: 380, h: 420 },
             statue_liberty:{ src: '10_us_statue_liberty.png',    w: 350, h: 420, collideRatio: [0.40, 0.25] },
             big_ben:       { src: '11_uk_big_ben.png',           w: 320, h: 400, collideRatio: [0.45, 0.25] },
             eiffel:        { src: '12_fr_eiffel.png',            w: 340, h: 420, collideRatio: [0.45, 0.20] },
             moai:          { src: '13_moai.png',                 w: 300, h: 340, collideRatio: [0.50, 0.30] },
-            boulangerie:   { src: '14_fr_boulangerie.png',       w: 380, h: 380, collideRatio: [0.70, 0.25] },
+            boulangerie:   { src: '14_fr_boulangerie.png',       w: 380, h: 380, interaction: { label: 'KPOP CONCERT TICKET',       url: 'https://www.naver.com' } },
             diner:         { src: '15_us_diner.png',             w: 380, h: 380, collideRatio: [0.75, 0.25] },
-            pub:           { src: '16_uk_pub.png',               w: 370, h: 370, collideRatio: [0.70, 0.25] },
+            pub:           { src: '16_uk_pub.png',               w: 370, h: 370, interaction: { label: 'VIP TRAVEL AGENCY',       url: 'https://www.naver.com' } },
             phone_booth:   { src: '17_uk_telepohone.png',        w: 200, h: 270, collideRatio: [0.45, 0.30] },
             china_food:    { src: '18_cn_chinafood.png',         w: 240, h: 320, collideRatio: [0.40, 0.20] },
             milktea:       { src: '19_tw_milktea.png',           w: 280, h: 290, collideRatio: [0,    0   ] },
@@ -705,7 +757,12 @@
             map_sign:      { src: '24_map.png',                  w: 240, h: 280, collideRatio: [0,    0   ] },
             arrow_sign:    { src: '25_arrow.png',                w: 200, h: 250, collideRatio: [0,    0   ] },
             sakura:        { src: '26_sakura.png',               w: 380, h: 380, collideRatio: [0.25, 0.25] },
-            minigame:      { src: '27_minigame.png',             w: 420, h: 480, collideRatio: [0.55, 0.25] }
+            minigame:      { src: '27_minigame.png',             w: 420, h: 480, collideRatio: [0.55, 0.25] },
+            oliveyoung:    { src: '28_Oliveyoung.png',           w: 380, h: 380, collideRatio: [0.70, 0.25] },
+            wowpass:       { src: '29_wowpass.png',              w: 380, h: 380, collideRatio: [0.70, 0.25] },
+            vip:           { src: '30_vip.png',                  w: 380, h: 380, collideRatio: [0.70, 0.25] },
+            souvenir:      { src: '31.souvenir.png',             w: 380, h: 380, collideRatio: [0.70, 0.25] },
+            kpop:          { src: '32_kpop.png',                 w: 380, h: 380, collideRatio: [0.70, 0.25] }
         };
         // 이미지 프리로드
         for (const k in objectDefs) {
@@ -718,7 +775,7 @@
         // === localStorage 자동 저장 키 ===
         // 편집 모드에서 옮긴 오브젝트 위치는 브라우저에 자동 저장되어 새로고침해도 유지됩니다.
         // R 키로 리셋, 코드 변경 시 v 번호 올리면 stale 저장 무시.
-        const STORAGE_KEY = 'cube_town_object_positions_v2'; // v2: 27_minigame 오브젝트 추가
+        const STORAGE_KEY = 'cube_town_object_positions_v3'; // v3: 28~32 오브젝트 추가
 
         // 저장된 위치 불러오기 (없거나 손상이면 null)
         // scale은 옵션 (없으면 1.0). 코드에 신규 오브젝트 추가 시 마이그레이션 (사용자 변경 보존)
@@ -771,66 +828,63 @@
         // [6 분수]      [8 갤러리]     [9 토리이]
         // 10~26: 나머지 미니어처/상점/소품은 셀 사이 공간에 자연 배치
         // DEFAULT_OBJECTS는 코드의 권위(reset 기준). objects는 localStorage가 우선.
-        const DEFAULT_OBJECTS = [
-            { key: 'tourism_center', x: 620, y: 809, scale: 1.15, collideRadius: 40 },
-            { key: 'hanok_shop', x: 499, y: 1803, scale: 1.3 },
-            { key: 'ramen', x: 679, y: 1439, scale: 1.3 },
-            { key: 'red_bridge', x: 1524, y: 1673 },
-            { key: 'night_market', x: 2582, y: 1351, scale: 1.3 },
-            { key: 'fountain', x: 1501, y: 955, scale: 2 },
-            { key: 'torii', x: 593, y: 1143 },
-            { key: 'statue_liberty', x: 1492, y: 2767, scale: 3 },
-            { key: 'big_ben', x: 2597, y: 805, scale: 2 },
-            { key: 'eiffel', x: 1499, y: 1427, scale: 2 },
-            { key: 'moai', x: 1790, y: 2163 },
-            { key: 'boulangerie', x: 2434, y: 2637, scale: 1.5 },
-            { key: 'diner', x: 416, y: 2472, scale: 1.8 },
-            { key: 'pub', x: 2429, y: 1848, scale: 1.75 },
-            { key: 'phone_booth', x: 2074, y: 2040, scale: 1.15 },
-            { key: 'china_food', x: 2345, y: 1290 },
-            { key: 'milktea', x: 726, y: 2534, scale: 1.45 },
-            { key: 'red_light', x: 892, y: 1460 },
-            { key: 'sakura', x: 1231, y: 1011 },
-            { key: 'bench', x: 1850, y: 1789 },
-            { key: 'bench', x: 1235, y: 1797 },
-            { key: 'streetlight', x: 1150, y: 825 },
-            { key: 'streetlight', x: 2000, y: 1000 },
-            { key: 'streetlight', x: 978, y: 1839 },
-            { key: 'streetlight', x: 2000, y: 2000, scale: 1.2 },
-            { key: 'flowers', x: 1013, y: 1220 },
-            { key: 'flowers', x: 1807, y: 1858 },
-            { key: 'map_sign', x: 1653, y: 1973, scale: 0.65 },
-            { key: 'arrow_sign', x: 1169, y: 1173 },
-            { key: 'sakura', x: 819, y: 410 },
-            { key: 'sakura', x: 861, y: 1209, scale: 1.2 },
-            { key: 'sakura', x: 2645, y: 2755 },
-            { key: 'sakura', x: 2700, y: 1100 },
-            { key: 'sakura', x: 1108, y: 2123, scale: 1.3 },
-            { key: 'sakura', x: 2113, y: 2411 },
-            { key: 'bench', x: 1119, y: 2164 },
-            { key: 'bench', x: 2079, y: 2450 },
-            { key: 'bench', x: 2546, y: 2787 },
-            { key: 'bench', x: 1347, y: 1025 },
-            { key: 'bench', x: 2610, y: 1107 },
-            { key: 'streetlight', x: 1681, y: 1009 },
-            { key: 'streetlight', x: 1344, y: 1813 },
-            { key: 'streetlight', x: 261, y: 1923 },
-            { key: 'streetlight', x: 2750, y: 1238 },
-            { key: 'streetlight', x: 234, y: 568 },
-            { key: 'arrow_sign', x: 1128, y: 1635 },
-            { key: 'arrow_sign', x: 811, y: 1952 },
-            { key: 'red_light', x: 438, y: 1336 },
-            { key: 'streetlight', x: 500, y: 1500 },
-            { key: 'streetlight', x: 2500, y: 1500 },
-            { key: 'streetlight', x: 300, y: 800 },
-            { key: 'arrow_sign', x: 500, y: 1050 },
-            { key: 'arrow_sign', x: 2500, y: 1050 },
-            { key: 'arrow_sign', x: 1050, y: 2000 },
-            { key: 'arrow_sign', x: 1050, y: 2000 },
-            { key: 'red_light', x: 2650, y: 2400 },
-            { key: 'red_light', x: 2150, y: 2700 },
-            { key: 'minigame', x: 2287, y: 891, scale: 1.1 },
-        ];
+       const DEFAULT_OBJECTS = [
+    { key: 'tourism_center', x: 580, y: 930, scale: 1.15, collideRadius: 40 },
+    { key: 'hanok_shop', x: 438, y: 2010, scale: 1.3 },
+    { key: 'ramen', x: 618, y: 1595, scale: 1.3 },
+    { key: 'red_bridge', x: 1524, y: 1673 },
+    { key: 'night_market', x: 2562, y: 1427, scale: 1.3 },
+    { key: 'fountain', x: 1501, y: 955, scale: 2 },
+    { key: 'statue_liberty', x: 1492, y: 2767, scale: 3 },
+    { key: 'big_ben', x: 2597, y: 805, scale: 2 },
+    { key: 'eiffel', x: 1499, y: 1427, scale: 2 },
+    { key: 'moai', x: 1790, y: 2163 },
+    { key: 'boulangerie', x: 2432, y: 2802, scale: 1.5 },
+    { key: 'diner', x: 403, y: 2607, scale: 1.8 },
+    { key: 'pub', x: 2413, y: 2142, scale: 1.75 },
+    { key: 'phone_booth', x: 1850, y: 1357, scale: 1.15 },
+    { key: 'china_food', x: 2346, y: 1271 },
+    { key: 'milktea', x: 716, y: 2662, scale: 1.45 },
+    { key: 'bench', x: 1850, y: 1789 },
+    { key: 'bench', x: 1235, y: 1797 },
+    { key: 'streetlight', x: 1150, y: 825 },
+    { key: 'streetlight', x: 2000, y: 1000 },
+    { key: 'streetlight', x: 978, y: 1839 },
+    { key: 'streetlight', x: 2000, y: 2000, scale: 1.2 },
+    { key: 'flowers', x: 1807, y: 1858 },
+    { key: 'map_sign', x: 1653, y: 1973, scale: 0.65 },
+    { key: 'arrow_sign', x: 1169, y: 1173 },
+    { key: 'sakura', x: 819, y: 410 },
+    { key: 'sakura', x: 861, y: 1209, scale: 1.2 },
+    { key: 'sakura', x: 2645, y: 2755 },
+    { key: 'sakura', x: 2700, y: 1100 },
+    { key: 'sakura', x: 1108, y: 2123, scale: 1.3 },
+    { key: 'bench', x: 1119, y: 2164 },
+    { key: 'bench', x: 2546, y: 2787 },
+    { key: 'bench', x: 1347, y: 1025 },
+    { key: 'bench', x: 2610, y: 1107 },
+    { key: 'streetlight', x: 1681, y: 1009 },
+    { key: 'streetlight', x: 1344, y: 1813 },
+    { key: 'streetlight', x: 261, y: 1923 },
+    { key: 'streetlight', x: 2750, y: 1238 },
+    { key: 'streetlight', x: 234, y: 568 },
+    { key: 'arrow_sign', x: 1128, y: 1635 },
+    { key: 'arrow_sign', x: 811, y: 1952 },
+    { key: 'red_light', x: 438, y: 1336 },
+    { key: 'streetlight', x: 500, y: 1500 },
+    { key: 'streetlight', x: 2500, y: 1500 },
+    { key: 'streetlight', x: 300, y: 800 },
+    { key: 'arrow_sign', x: 500, y: 1050 },
+    { key: 'arrow_sign', x: 2500, y: 1050 },
+    { key: 'arrow_sign', x: 1050, y: 2000 },
+    { key: 'arrow_sign', x: 1050, y: 2000 },
+    { key: 'minigame', x: 2287, y: 891, scale: 1.1 },
+    { key: 'oliveyoung', x: 691, y: 2036, scale: 0.7 },
+    { key: 'wowpass', x: 916, y: 857, scale: 0.7 },
+    { key: 'vip', x: 2134, y: 1790, scale: 0.7 },
+    { key: 'kpop', x: 2137, y: 2649, scale: 0.7 },
+    { key: 'souvenir', x: 886, y: 1579, scale: 0.65 },
+];
         // localStorage가 우선, 없거나 손상이면 DEFAULT_OBJECTS의 deep copy 사용
         const objects = loadObjectsFromStorage() || DEFAULT_OBJECTS.map(o => ({ ...o }));
 
@@ -1681,6 +1735,32 @@
         // ============================================================
         let editMode = false;
         let selectedIndex = -1;
+        let paletteKey = null; // 팔레트에서 선택된 오브젝트 키
+
+        function buildPalette() {
+            const grid = document.getElementById('pal-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            for (const key in objectDefs) {
+                const def = objectDefs[key];
+                const item = document.createElement('div');
+                item.className = 'pal-item';
+                item.dataset.key = key;
+                const img = document.createElement('img');
+                img.src = def.img.src;
+                const label = document.createElement('span');
+                label.textContent = key.replace(/_/g, ' ');
+                item.appendChild(img);
+                item.appendChild(label);
+                item.addEventListener('click', () => {
+                    paletteKey = paletteKey === key ? null : key;
+                    document.querySelectorAll('.pal-item').forEach(el =>
+                        el.classList.toggle('active', el.dataset.key === paletteKey));
+                    canvas.style.cursor = paletteKey ? 'copy' : 'crosshair';
+                });
+                grid.appendChild(item);
+            }
+        }
         let isDragging = false;
         let dragOffsetX = 0, dragOffsetY = 0;
         let panActive = false;
@@ -1820,12 +1900,15 @@
             // 편집 모드 진입 시 우상단 회사 보드 숨김 (편집 HUD와 우상단에서 겹침). 종료 시 복원.
             const companyBoard = document.getElementById('company-board');
             if (companyBoard) companyBoard.style.display = editMode ? 'none' : '';
+            const editPalette = document.getElementById('edit-palette');
             if (!editMode) {
                 selectedIndex = -1;
+                paletteKey = null;
                 isDragging = false;
                 panActive = false;
                 panStart = null;
                 canvas.style.cursor = 'default';
+                if (editPalette) editPalette.classList.remove('show');
                 // 잔여 키 누름 클리어 (편집 중 눌렀던 키로 캐릭터가 갑자기 이동하는 것 방지)
                 for (const k in keys) delete keys[k];
                 // 충돌 박스 재계산 (이동/삭제된 오브젝트 반영)
@@ -1842,6 +1925,7 @@
                 }
             } else {
                 canvas.style.cursor = 'crosshair';
+                if (editPalette) { editPalette.classList.add('show'); buildPalette(); }
                 // 편집 진입 시 카메라를 플레이어 중심으로 즉시 정렬 (편집 시작 = 캐릭터 위치).
                 // 그 후엔 update가 멈추므로 우클릭 드래그/방향키로 자유 패닝 가능.
                 camera.x = player.x - canvas.width / 2;
@@ -2011,6 +2095,14 @@
                 isDrawingBox = true;
                 drawBoxStart = { x: wx, y: wy };
                 drawBoxCurrent = { x: wx, y: wy };
+                return;
+            }
+            // 팔레트 선택 상태: 클릭 위치에 새 오브젝트 배치
+            if (paletteKey) {
+                objects.push({ key: paletteKey, x: Math.round(wx), y: Math.round(wy), scale: 1 });
+                selectedIndex = objects.length - 1;
+                markDirty();
+                updateEditHUD();
                 return;
             }
             // 일반 좌클릭: 오브젝트 선택 / 드래그 시작

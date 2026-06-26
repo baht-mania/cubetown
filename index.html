@@ -872,7 +872,7 @@
         function showPopup(obj) {
             const meta = objectDefs[obj.key].interaction;
             if (meta.restricted) {
-                popupText.innerHTML = t('popupRestricted');
+                popupText.innerHTML = `<strong>${meta.label}</strong><br>${t('popupRestricted')}`;
                 popupYes.style.display = 'none';
                 popupNo.textContent = t('popupRestrictedClose');
                 currentPopupUrl = null;

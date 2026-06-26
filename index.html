@@ -562,6 +562,8 @@
                 popupYes:     "Yes, I'll move there",
                 popupNo:      "No, I'll go somewhere else",
                 popupQuestion: (label) => `Would you like to visit <strong>${label}</strong>?`,
+                popupRestricted: 'You are an unauthenticated customer.<br>Please authenticate before entering.',
+                popupRestrictedClose: 'Close',
                 address:      'C703, 8F, 16, Pangyoyeok-ro 192beon-gil, Bundang-gu, Seongnam-si, Gyeonggi-do, Republic of Korea',
             },
             ja: {
@@ -572,6 +574,8 @@
                 popupYes:     '行ってみる',
                 popupNo:      '別の場所へ行く',
                 popupQuestion: (label) => `<strong>${label}</strong>に行きますか？`,
+                popupRestricted: '未認証のお客様です。<br>認証後にご入場ください。',
+                popupRestrictedClose: '閉じる',
                 address:      '京畿道城南市盆唐区板橋ヨク路192番キル8階16C703',
             }
         };
@@ -636,8 +640,17 @@
 
         function showPopup(obj) {
             const meta = objectDefs[obj.key].interaction;
-            popupText.innerHTML = t('popupQuestion', meta.label);
-            currentPopupUrl = meta.url;
+            if (meta.restricted) {
+                popupText.innerHTML = t('popupRestricted');
+                popupYes.style.display = 'none';
+                popupNo.textContent = t('popupRestrictedClose');
+                currentPopupUrl = null;
+            } else {
+                popupText.innerHTML = t('popupQuestion', meta.label);
+                popupYes.style.display = '';
+                popupNo.textContent = t('popupNo');
+                currentPopupUrl = meta.url;
+            }
             popupOverlay.classList.add('show');
             popupOpen = true;
         }
@@ -734,7 +747,7 @@
             hanok_gate:     { src: '01_korea_hanok_gate.png',     w: 550, h: 550 },
             tourism_center: { src: '02_korea_tourism_center.png', w: 550, h: 550, interaction: { label: 'キャッシュレスで韓国を旅しよう', url: 'https://www.wowpass.io/ja' } },
             hanok_shop:    { src: '03_korea_hanok_shop.png',     w: 380, h: 380, interaction: { label: 'Olive young',     url: 'https://global.oliveyoung.com/' } },
-            ramen:         { src: '04_japan_ramen.png',          w: 380, h: 380, interaction: { label: 'Souvenir Shop',       url: 'https://global.oliveyoung.com/' } },
+            ramen:         { src: '04_japan_ramen.png',          w: 380, h: 380, interaction: { label: 'Souvenir Shop',       url: 'https://global.oliveyoung.com/', restricted: true } },
             night_market:  { src: '05_taiwan_market.png',        w: 320, h: 320 },
             fountain:      { src: '06_fountain.png',             w: 450, h: 450 },
             red_bridge:    { src: '07_red_bridge.png',           w: 520, h: 400 },
@@ -744,9 +757,9 @@
             big_ben:       { src: '11_uk_big_ben.png',           w: 320, h: 400, collideRatio: [0.45, 0.25] },
             eiffel:        { src: '12_fr_eiffel.png',            w: 340, h: 420, collideRatio: [0.45, 0.20] },
             moai:          { src: '13_moai.png',                 w: 300, h: 340, collideRatio: [0.50, 0.30] },
-            boulangerie:   { src: '14_fr_boulangerie.png',       w: 380, h: 380, interaction: { label: 'KPOP CONCERT TICKET',       url: 'https://www.naver.com' } },
+            boulangerie:   { src: '14_fr_boulangerie.png',       w: 380, h: 380, interaction: { label: 'KPOP CONCERT TICKET',       url: 'https://www.naver.com', restricted: true } },
             diner:         { src: '15_us_diner.png',             w: 380, h: 380, collideRatio: [0.75, 0.25] },
-            pub:           { src: '16_uk_pub.png',               w: 370, h: 370, interaction: { label: 'VIP TRAVEL AGENCY',       url: 'https://www.naver.com' } },
+            pub:           { src: '16_uk_pub.png',               w: 370, h: 370, interaction: { label: 'VIP TRAVEL AGENCY',       url: 'https://www.naver.com', restricted: true } },
             phone_booth:   { src: '17_uk_telepohone.png',        w: 200, h: 270, collideRatio: [0.45, 0.30] },
             china_food:    { src: '18_cn_chinafood.png',         w: 240, h: 320, collideRatio: [0.40, 0.20] },
             milktea:       { src: '19_tw_milktea.png',           w: 280, h: 290, collideRatio: [0,    0   ] },

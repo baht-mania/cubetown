@@ -790,7 +790,7 @@
         // === localStorage 자동 저장 키 ===
         // 편집 모드에서 옮긴 오브젝트 위치는 브라우저에 자동 저장되어 새로고침해도 유지됩니다.
         // R 키로 리셋, 코드 변경 시 v 번호 올리면 stale 저장 무시.
-        const STORAGE_KEY = 'cube_town_object_positions_v6'; // v6: 오브젝트 위치 최신화
+        const STORAGE_KEY = 'cube_town_object_positions_v7'; // v7: 오브젝트 위치 최신화
 
         // 저장된 위치 불러오기 (없거나 손상이면 null)
         // scale은 옵션 (없으면 1.0). 코드에 신규 오브젝트 추가 시 마이그레이션 (사용자 변경 보존)
@@ -845,22 +845,22 @@
         // 10~26: 나머지 미니어처/상점/소품은 셀 사이 공간에 자연 배치
         // DEFAULT_OBJECTS는 코드의 권위(reset 기준). objects는 localStorage가 우선.
        const DEFAULT_OBJECTS = [
-    { key: 'tourism_center', x: 586, y: 1013, scale: 1.15, collideRadius: 40 },
-    { key: 'hanok_shop', x: 421, y: 2099, scale: 1.3 },
-    { key: 'ramen', x: 588, y: 1737, scale: 1.5 },
+    { key: 'tourism_center', x: 628, y: 785, scale: 1.1, collideRadius: 40 },
+    { key: 'hanok_shop', x: 570, y: 1373, scale: 1.3 },
+    { key: 'ramen', x: 567, y: 1902, scale: 1.5 },
     { key: 'red_bridge', x: 1524, y: 1673 },
-    { key: 'night_market', x: 2504, y: 1556, scale: 1.3 },
+    { key: 'night_market', x: 2429, y: 1331, scale: 1.3 },
     { key: 'fountain', x: 1501, y: 955, scale: 2 },
-    { key: 'statue_liberty', x: 1492, y: 2767, scale: 3 },
+    { key: 'statue_liberty', x: 1491, y: 2767, scale: 3 },
     { key: 'big_ben', x: 2597, y: 805, scale: 2 },
     { key: 'eiffel', x: 1499, y: 1427, scale: 2 },
     { key: 'moai', x: 1790, y: 2163 },
-    { key: 'boulangerie', x: 2432, y: 2802, scale: 1.5 },
-    { key: 'diner', x: 469, y: 2569, scale: 1.8 },
-    { key: 'pub', x: 2441, y: 2273, scale: 1.75 },
+    { key: 'boulangerie', x: 2412, y: 2519, scale: 1.5 },
+    { key: 'diner', x: 418, y: 2532, scale: 1.8 },
+    { key: 'pub', x: 2463, y: 1884, scale: 1.75 },
     { key: 'phone_booth', x: 1850, y: 1357, scale: 1.15 },
-    { key: 'china_food', x: 2283, y: 1482 },
-    { key: 'milktea', x: 799, y: 2645, scale: 1.45 },
+    { key: 'china_food', x: 2195, y: 1276 },
+    { key: 'milktea', x: 807, y: 2469, scale: 1.45 },
     { key: 'bench', x: 1850, y: 1789 },
     { key: 'bench', x: 1235, y: 1797 },
     { key: 'streetlight', x: 1150, y: 825 },
@@ -871,7 +871,7 @@
     { key: 'map_sign', x: 1653, y: 1973, scale: 0.65 },
     { key: 'arrow_sign', x: 1169, y: 1173 },
     { key: 'sakura', x: 819, y: 410 },
-    { key: 'sakura', x: 861, y: 1209, scale: 1.2 },
+    { key: 'sakura', x: 799, y: 1177, scale: 1.2 },
     { key: 'sakura', x: 2645, y: 2755 },
     { key: 'sakura', x: 2700, y: 1100 },
     { key: 'sakura', x: 1108, y: 2123, scale: 1.3 },
@@ -885,9 +885,8 @@
     { key: 'streetlight', x: 2750, y: 1238 },
     { key: 'streetlight', x: 234, y: 568 },
     { key: 'arrow_sign', x: 1128, y: 1635 },
-    { key: 'arrow_sign', x: 811, y: 1952 },
-    { key: 'red_light', x: 438, y: 1336 },
-    { key: 'streetlight', x: 500, y: 1500 },
+    { key: 'red_light', x: 273, y: 1115 },
+    { key: 'streetlight', x: 1074, y: 1155 },
     { key: 'streetlight', x: 2500, y: 1500 },
     { key: 'streetlight', x: 300, y: 800 },
     { key: 'arrow_sign', x: 500, y: 1050 },
@@ -895,11 +894,11 @@
     { key: 'arrow_sign', x: 1050, y: 2000 },
     { key: 'arrow_sign', x: 1050, y: 2000 },
     { key: 'minigame', x: 2287, y: 891, scale: 1.1 },
-    { key: 'oliveyoung', x: 680, y: 2107, scale: 0.7 },
-    { key: 'wowpass', x: 916, y: 857, scale: 0.7 },
-    { key: 'vip', x: 2137, y: 1997, scale: 0.7 },
-    { key: 'kpop', x: 2137, y: 2649, scale: 0.7 },
-    { key: 'souvenir', x: 879, y: 1699, scale: 0.65 },
+    { key: 'oliveyoung', x: 845, y: 1313, scale: 0.7 },
+    { key: 'wowpass', x: 895, y: 811, scale: 0.7 },
+    { key: 'vip', x: 2177, y: 1657, scale: 0.7 },
+    { key: 'kpop', x: 2167, y: 2269, scale: 0.7 },
+    { key: 'souvenir', x: 882, y: 1786, scale: 0.65 },
 ];
         // localStorage가 우선, 없거나 손상이면 DEFAULT_OBJECTS의 deep copy 사용
         const objects = loadObjectsFromStorage() || DEFAULT_OBJECTS.map(o => ({ ...o }));

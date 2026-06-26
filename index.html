@@ -125,7 +125,7 @@
         /* === 회사 소개 보드 (하단 고정 strip) === */
         #company-board {
             position: fixed;
-            bottom: 0;
+            bottom: 40px;
             left: 0;
             right: 0;
             background: rgba(15, 23, 42, 0.90);
@@ -210,6 +210,154 @@
                 padding-left: 165px;
             }
         }
+
+        /* === 로그인 바 === */
+        #login-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: rgba(7, 11, 24, 0.96);
+            border-top: 1px solid rgba(255,255,255,0.07);
+            backdrop-filter: blur(14px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 16px;
+            z-index: 12;
+        }
+        #login-bar input {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 5px;
+            color: #e2e8f0;
+            font-size: 11px;
+            padding: 4px 9px;
+            outline: none;
+            height: 24px;
+            width: 110px;
+            transition: border-color 0.15s;
+        }
+        #login-bar input:focus { border-color: #3b82f6; }
+        #login-bar input::placeholder { color: #64748b; }
+        .login-bar-btn {
+            height: 24px;
+            padding: 0 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        .login-bar-btn:hover { opacity: 0.85; }
+        #login-btn { background: #2563eb; color: #fff; }
+        #signup-bar-btn { background: rgba(255,255,255,0.10); color: #cbd5e1; border: 1px solid rgba(255,255,255,0.15); }
+
+        /* === 회원가입 모달 === */
+        #signup-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        #signup-overlay.show { display: flex; }
+        #signup-modal {
+            background: #0f172a;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            padding: 28px 28px 22px;
+            width: 320px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            animation: popupPop 0.22s cubic-bezier(.34,1.56,.64,1);
+        }
+        #signup-modal h2 {
+            color: #f1f5f9;
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 18px;
+            letter-spacing: 0.05em;
+        }
+        .su-field { margin-bottom: 12px; }
+        .su-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 600;
+            color: #64748b;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .su-row { display: flex; gap: 6px; }
+        .su-input {
+            width: 100%;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 7px;
+            color: #e2e8f0;
+            font-size: 13px;
+            padding: 8px 11px;
+            outline: none;
+            box-sizing: border-box;
+            transition: border-color 0.15s;
+        }
+        .su-input:focus { border-color: #3b82f6; }
+        .su-input::placeholder { color: #475569; }
+        .su-check-btn {
+            flex-shrink: 0;
+            padding: 0 12px;
+            background: rgba(59,130,246,0.18);
+            border: 1px solid rgba(59,130,246,0.35);
+            border-radius: 7px;
+            color: #93c5fd;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s;
+        }
+        .su-check-btn:hover { background: rgba(59,130,246,0.28); }
+        #su-error {
+            display: none;
+            color: #f87171;
+            font-size: 12px;
+            text-align: center;
+            margin: 10px 0 4px;
+            padding: 8px;
+            background: rgba(239,68,68,0.1);
+            border-radius: 7px;
+            border: 1px solid rgba(239,68,68,0.25);
+        }
+        .su-actions { display: flex; gap: 8px; margin-top: 16px; }
+        .su-submit-btn {
+            flex: 1;
+            padding: 9px;
+            background: #2563eb;
+            border: none;
+            border-radius: 7px;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .su-submit-btn:hover { background: #1d4ed8; }
+        .su-cancel-btn {
+            padding: 9px 16px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 7px;
+            color: #94a3b8;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .su-cancel-btn:hover { background: rgba(255,255,255,0.10); }
 
         /* === 미니게임 모달 === */
         #minigame-overlay {
@@ -463,6 +611,45 @@
         </div>
     </div>
 
+    <!-- 로그인 바 -->
+    <div id="login-bar">
+        <input type="text" id="login-id" data-i18n-ph="loginIdPh" placeholder="ID" autocomplete="off" />
+        <input type="password" id="login-pw" data-i18n-ph="loginPwPh" placeholder="Password" autocomplete="off" />
+        <button id="login-btn" class="login-bar-btn" data-i18n="loginBtn">Login</button>
+        <button id="signup-bar-btn" class="login-bar-btn" data-i18n="signupBtn">Sign Up</button>
+    </div>
+
+    <!-- 회원가입 모달 -->
+    <div id="signup-overlay">
+        <div id="signup-modal">
+            <h2 data-i18n="signupTitle">Create Account</h2>
+            <div class="su-field">
+                <label class="su-label" data-i18n="signupIdLabel">Username</label>
+                <div class="su-row">
+                    <input class="su-input" type="text" id="su-id" data-i18n-ph="signupIdPh" placeholder="Username" autocomplete="off" />
+                    <button class="su-check-btn" id="su-id-check" data-i18n="signupIdCheck">Check</button>
+                </div>
+            </div>
+            <div class="su-field">
+                <label class="su-label" data-i18n="signupPwLabel">Password</label>
+                <input class="su-input" type="password" id="su-pw" data-i18n-ph="signupPwPh" placeholder="Password" />
+            </div>
+            <div class="su-field">
+                <label class="su-label" data-i18n="signupPw2Label">Confirm Password</label>
+                <input class="su-input" type="password" id="su-pw2" data-i18n-ph="signupPw2Ph" placeholder="Confirm Password" />
+            </div>
+            <div class="su-field">
+                <label class="su-label" data-i18n="signupRefLabel">Referral Code</label>
+                <input class="su-input" type="text" id="su-ref" data-i18n-ph="signupRefPh" placeholder="Referral Code" autocomplete="off" />
+            </div>
+            <div id="su-error"></div>
+            <div class="su-actions">
+                <button class="su-submit-btn" id="su-submit" data-i18n="signupSubmit">Sign Up</button>
+                <button class="su-cancel-btn" id="su-cancel" data-i18n="signupCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- 회사 소개 칸반보드 (상단 중앙) -->
     <div id="company-board">
         <div class="kanban-header">ABOUT US</div>
@@ -567,6 +754,24 @@
                 popupRestricted: 'You are an unauthenticated customer.<br>Please authenticate before entering.',
                 popupRestrictedClose: 'Close',
                 address:      'C703, 8F, 16, Pangyoyeok-ro 192beon-gil, Bundang-gu, Seongnam-si, Gyeonggi-do, Republic of Korea',
+                loginBtn:     'Login',
+                signupBtn:    'Sign Up',
+                loginIdPh:    'ID',
+                loginPwPh:    'Password',
+                signupTitle:  'Create Account',
+                signupIdLabel:'Username',
+                signupIdPh:   'Username',
+                signupIdCheck:'Check',
+                signupPwLabel:'Password',
+                signupPwPh:   'Password',
+                signupPw2Label:'Confirm Password',
+                signupPw2Ph:  'Confirm Password',
+                signupRefLabel:'Referral Code',
+                signupRefPh:  'Referral Code',
+                signupSubmit: 'Sign Up',
+                signupCancel: 'Cancel',
+                signupIdAvail:'Username is available.',
+                signupRefErr: 'Referral code is incorrect.',
             },
             ja: {
                 hudScore:     '取得キューブ:',
@@ -579,6 +784,24 @@
                 popupRestricted: '未認証のお客様です。<br>認証後にご入場ください。',
                 popupRestrictedClose: '閉じる',
                 address:      '京畿道城南市盆唐区板橋ヨク路192番キル8階16C703',
+                loginBtn:     'ログイン',
+                signupBtn:    '会員登録',
+                loginIdPh:    'ID',
+                loginPwPh:    'パスワード',
+                signupTitle:  'アカウント作成',
+                signupIdLabel:'ユーザー名',
+                signupIdPh:   'ユーザー名',
+                signupIdCheck:'重複確認',
+                signupPwLabel:'パスワード',
+                signupPwPh:   'パスワード',
+                signupPw2Label:'パスワード確認',
+                signupPw2Ph:  'パスワード確認',
+                signupRefLabel:'紹介コード',
+                signupRefPh:  '紹介コード',
+                signupSubmit: '登録する',
+                signupCancel: 'キャンセル',
+                signupIdAvail:'使用可能なユーザー名です。',
+                signupRefErr: '紹介コードが正しくありません。',
             }
         };
 
@@ -596,6 +819,10 @@
                 if (I18N[currentLang][key] !== undefined && typeof I18N[currentLang][key] !== 'function') {
                     el.innerHTML = I18N[currentLang][key];
                 }
+            });
+            document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+                const key = el.getAttribute('data-i18n-ph');
+                if (I18N[currentLang][key]) el.placeholder = I18N[currentLang][key];
             });
             document.getElementById('lang-en').classList.toggle('active', currentLang === 'en');
             document.getElementById('lang-ja').classList.toggle('active', currentLang === 'ja');
@@ -668,6 +895,46 @@
         // ESC로도 닫기
         window.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && popupOpen) closePopup();
+        });
+
+        // === 로그인 바 / 회원가입 모달 ===
+        const signupOverlay = document.getElementById('signup-overlay');
+        const suError = document.getElementById('su-error');
+
+        function openSignup() {
+            document.getElementById('su-id').value = '';
+            document.getElementById('su-pw').value = '';
+            document.getElementById('su-pw2').value = '';
+            document.getElementById('su-ref').value = '';
+            suError.style.display = 'none';
+            suError.textContent = '';
+            signupOverlay.classList.add('show');
+        }
+
+        function closeSignup() {
+            signupOverlay.classList.remove('show');
+        }
+
+        document.getElementById('signup-bar-btn').addEventListener('click', openSignup);
+        document.getElementById('su-cancel').addEventListener('click', closeSignup);
+
+        document.getElementById('su-id-check').addEventListener('click', () => {
+            const idVal = document.getElementById('su-id').value.trim();
+            if (!idVal) return;
+            suError.style.display = 'block';
+            suError.style.color = '#4ade80';
+            suError.textContent = t('signupIdAvail');
+        });
+
+        document.getElementById('su-submit').addEventListener('click', () => {
+            suError.style.display = 'block';
+            suError.style.color = '#f87171';
+            suError.textContent = t('signupRefErr');
+            setTimeout(closeSignup, 1800);
+        });
+
+        signupOverlay.addEventListener('click', (e) => {
+            if (e.target === signupOverlay) closeSignup();
         });
 
         // 화면 크기 설정

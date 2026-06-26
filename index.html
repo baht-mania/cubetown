@@ -536,12 +536,14 @@
         <p style="margin:3px 0; color:#10b981;"><b>B</b>: Box Drawing Mode ON/OFF</p>
         <p style="margin:3px 0; color:#10b981;"><b>Left Click + Drag</b> (B Mode): Add Collision Box</p>
         <p style="margin:3px 0; color:#10b981;"><b>X</b> (B Mode): Remove Last Box</p>
+        <p style="margin:3px 0; color:#ef4444;"><b>C</b>: Collision Box Editor (select object first)</p>
         <p style="margin:3px 0;"><b>S</b>: Output objects[] + Boxes to Console + Clipboard</p>
         <div id="edit-selected" style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,0.15); display:none;">
             <p style="margin:3px 0;"><b style="color:#f59e0b;">Selected:</b> <span id="edit-key"></span></p>
             <p style="margin:3px 0;"><b style="color:#f59e0b;">Position:</b> (<span id="edit-x"></span>, <span id="edit-y"></span>)</p>
             <p style="margin:3px 0;"><b style="color:#f59e0b;">Scale:</b> <span id="edit-scale">100%</span></p>
             <p style="margin:3px 0;"><b style="color:#ef4444;">Collision:</b> <span id="edit-collide">30</span>px</p>
+            <p style="margin:3px 0; display:none;" id="edit-colbox-info"><b style="color:#ef4444;">ColBox:</b> <span id="edit-colbox-size"></span></p>
         </div>
         <p style="margin-top:10px; color:#10b981; font-size:11px;">Auto-save: <span id="save-time">pending</span></p>
         <p style="margin:3px 0; color:#94a3b8; font-size:11px;">cursor: <span id="edit-mouse">0, 0</span></p>
@@ -813,6 +815,7 @@
                     const out = { key: o.key, x: o.x, y: o.y };
                     if (o.scale !== undefined) out.scale = o.scale;
                     if (o.collideRadius !== undefined) out.collideRadius = o.collideRadius;
+                    if (o.collideBox && typeof o.collideBox === 'object') out.collideBox = { ox: o.collideBox.ox||0, oy: o.collideBox.oy||0, w: o.collideBox.w||0, h: o.collideBox.h||0 };
                     return out;
                 });
                 // 마이그레이션: 코드에 신규 오브젝트 추가됨 → 저장된 뒤에 default 보충
@@ -957,48 +960,16 @@
             // { x: 1000, y: 500, w: 200, h: 100, label: 'custom-1' },
         ];
 
-        // === 빨간 박스 대상 오브젝트 (사용자 스크린샷 기준 12개) ===
-        // 각 오브젝트의 발 위치 + PNG 크기*scale로 자동 박스 추가 (PNG의 75% 영역, 발 기준 위쪽 95%)
-        // 사용자가 편집 모드에서 박스 그리기 도구(B 키)로 미세 조정 가능
+        // COLLISION_TARGET_KEYS: 이 오브젝트들은 auto 충돌 박스 생성 대상.
+        // obj.collideBox 가 있으면 auto 대신 그것을 사용 (편집 모드 C 키로 수정).
         const COLLISION_TARGET_KEYS = new Set([
             'tourism_center', 'fountain', 'ramen', 'hanok_shop',
-            /* eiffel: 정중앙 에펠탑 충돌 비활성화 */
             'night_market', 'china_food', 'pub',
             'diner', 'milktea', 'statue_liberty', 'boulangerie'
         ]);
-        for (const obj of objects) {
-            if (!COLLISION_TARGET_KEYS.has(obj.key)) continue;
-            const def = objectDefs[obj.key];
-            const s = obj.scale || 1;
-            const bw = def.w * s * 0.60;
-            const bh = def.h * s * 0.60;
-            MANUAL_COLLISION_BOXES.push({
-                x: obj.x - bw / 2,
-                y: obj.y - bh * 0.95,
-                w: bw, h: bh,
-                label: obj.key + '-auto'
-            });
-        }
 
         const buildings = [];
-        if (COLLISION_AUTO_GENERATE) {
-            for (const obj of objects) {
-                const def = objectDefs[obj.key];
-                if (def.noCollide) continue;
-                const r = obj.collideRadius ?? COLLIDE_RADIUS;
-                if (r <= 0) continue;
-                buildings.push({
-                    x: obj.x - r,
-                    y: obj.y - r,
-                    w: r * 2,
-                    h: r * 2,
-                    label: obj.key
-                });
-            }
-        }
-        for (const b of MANUAL_COLLISION_BOXES) {
-            buildings.push({ ...b });
-        }
+        rebuildBuildings();
 
         // === 미니게임존 ===
         // 캐릭터가 이 원형 영역 안에 들어오면 자동으로 미니게임 트리거.
@@ -1720,6 +1691,31 @@
                 }
             }
 
+            // 충돌 박스 편집 모드: 선택 오브젝트의 충돌 박스 + 8개 핸들
+            if (collideEditMode && editMode && selectedIndex >= 0 && objects[selectedIndex]) {
+                const _cobj = objects[selectedIndex];
+                const _cbox = getObjColBox(_cobj);
+                if (_cbox) {
+                    ctx.fillStyle = 'rgba(239,68,68,0.18)';
+                    ctx.fillRect(_cbox.x, _cbox.y, _cbox.w, _cbox.h);
+                    ctx.strokeStyle = '#ef4444';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([]);
+                    ctx.strokeRect(_cbox.x, _cbox.y, _cbox.w, _cbox.h);
+                    ctx.fillStyle = '#ef4444';
+                    ctx.font = 'bold 13px monospace';
+                    ctx.fillText(`${Math.round(_cbox.w)} × ${Math.round(_cbox.h)}`, _cbox.x + 4, _cbox.y - 6);
+                    const _handles = getColHandlePositions(_cbox);
+                    for (const _h of _handles) {
+                        ctx.fillStyle = '#f59e0b';
+                        ctx.fillRect(_h.x - COL_HANDLE_SIZE/2, _h.y - COL_HANDLE_SIZE/2, COL_HANDLE_SIZE, COL_HANDLE_SIZE);
+                        ctx.strokeStyle = '#1e293b';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(_h.x - COL_HANDLE_SIZE/2, _h.y - COL_HANDLE_SIZE/2, COL_HANDLE_SIZE, COL_HANDLE_SIZE);
+                    }
+                }
+            }
+
             // 편집 모드: 선택 오브젝트 외곽선 + 발 위치 마커 (scale 반영)
             if (editMode && selectedIndex >= 0 && objects[selectedIndex]) {
                 const obj = objects[selectedIndex];
@@ -1748,7 +1744,73 @@
         // ============================================================
         let editMode = false;
         let selectedIndex = -1;
-        let paletteKey = null; // 팔레트에서 선택된 오브젝트 키
+        let paletteKey = null;
+
+        // === 충돌 박스 편집 (C 키) ===
+        let collideEditMode = false;
+        let colHandleDrag = null; // { handleIdx: 0-7(리사이즈) or 8(이동), origBox, origMouse }
+        const COL_HANDLE_SIZE = 8;
+        // 핸들 인덱스: 0=TL 1=TC 2=TR / 3=ML 4=MR / 5=BL 6=BC 7=BR
+        const COL_HANDLE_EDGES = [
+            [1,1,0,0],[0,1,0,0],[0,1,1,0],
+            [1,0,0,0],          [0,0,1,0],
+            [1,0,0,1],[0,0,0,1],[0,0,1,1]
+        ];
+        const COL_HANDLE_CURSORS = [
+            'nwse-resize','ns-resize','nesw-resize',
+            'ew-resize','ew-resize',
+            'nesw-resize','ns-resize','nwse-resize'
+        ];
+
+        function getObjColBox(obj) {
+            if (obj.collideBox) {
+                return { x: obj.x + obj.collideBox.ox, y: obj.y + obj.collideBox.oy, w: obj.collideBox.w, h: obj.collideBox.h };
+            }
+            if (COLLISION_TARGET_KEYS.has(obj.key)) {
+                const def = objectDefs[obj.key];
+                const s = obj.scale || 1;
+                const bw = def.w * s * 0.60;
+                const bh = def.h * s * 0.60;
+                return { x: obj.x - bw / 2, y: obj.y - bh * 0.95, w: bw, h: bh };
+            }
+            return null;
+        }
+
+        function getColHandlePositions(box) {
+            const {x, y, w, h} = box;
+            return [
+                {x, y},          {x: x+w/2, y},      {x: x+w, y},
+                {x, y: y+h/2},                         {x: x+w, y: y+h/2},
+                {x, y: y+h},     {x: x+w/2, y: y+h}, {x: x+w, y: y+h}
+            ];
+        }
+
+        function hitTestColHandle(wx, wy, box) {
+            const handles = getColHandlePositions(box);
+            for (let i = 0; i < handles.length; i++) {
+                if (Math.abs(wx - handles[i].x) <= COL_HANDLE_SIZE && Math.abs(wy - handles[i].y) <= COL_HANDLE_SIZE) return i;
+            }
+            return -1;
+        }
+
+        function applyColResize(handleIdx, origBox, dx, dy) {
+            let {x, y, w, h} = origBox;
+            const [ml, mt, mr, mb] = COL_HANDLE_EDGES[handleIdx];
+            if (ml) { x += dx; w -= dx; }
+            if (mt) { y += dy; h -= dy; }
+            if (mr) { w += dx; }
+            if (mb) { h += dy; }
+            return { x, y, w: Math.max(10, w), h: Math.max(10, h) };
+        }
+
+        function setObjColBox(obj, absBox) {
+            obj.collideBox = {
+                ox: Math.round(absBox.x - obj.x),
+                oy: Math.round(absBox.y - obj.y),
+                w: Math.round(absBox.w),
+                h: Math.round(absBox.h)
+            };
+        }
 
         function buildPalette() {
             const grid = document.getElementById('pal-grid');
@@ -1878,13 +1940,26 @@
                 editYEl.innerText = Math.round(obj.y);
                 if (editScaleEl) editScaleEl.innerText = Math.round((obj.scale || 1) * 100) + '%';
                 if (editCollideEl) editCollideEl.innerText = (obj.collideRadius ?? COLLIDE_RADIUS);
+                const colBoxInfoEl = document.getElementById('edit-colbox-info');
+                const colBoxSizeEl = document.getElementById('edit-colbox-size');
+                if (colBoxInfoEl && colBoxSizeEl) {
+                    if (obj.collideBox) {
+                        const cb = obj.collideBox;
+                        colBoxInfoEl.style.display = '';
+                        colBoxSizeEl.innerText = `${cb.w}×${cb.h} (${cb.ox},${cb.oy})`;
+                    } else {
+                        colBoxInfoEl.style.display = 'none';
+                    }
+                }
             } else {
                 editSelDom.style.display = 'none';
             }
         }
 
-        // 편집 종료 + markDirty 시 충돌 박스 재계산
-        // COLLISION_AUTO_GENERATE=false면 자동 생성 스킵, MANUAL_COLLISION_BOXES만 적용
+        // 충돌 박스 재계산:
+        // 1) COLLISION_AUTO_GENERATE=true면 collideRadius 원형 박스 추가
+        // 2) COLLISION_TARGET_KEYS 오브젝트: collideBox 있으면 그것 사용, 없으면 auto-calc
+        // 3) MANUAL_COLLISION_BOXES (B키로 그린 자유 박스)
         function rebuildBuildings() {
             buildings.length = 0;
             if (COLLISION_AUTO_GENERATE) {
@@ -1893,13 +1968,22 @@
                     if (def.noCollide) continue;
                     const r = obj.collideRadius ?? COLLIDE_RADIUS;
                     if (r <= 0) continue;
-                    buildings.push({
-                        x: obj.x - r,
-                        y: obj.y - r,
-                        w: r * 2,
-                        h: r * 2,
-                        label: obj.key
-                    });
+                    buildings.push({ x: obj.x - r, y: obj.y - r, w: r * 2, h: r * 2, label: obj.key });
+                }
+            }
+            for (const obj of objects) {
+                if (!COLLISION_TARGET_KEYS.has(obj.key)) continue;
+                if (obj.collideBox) {
+                    const cb = obj.collideBox;
+                    if (cb.w > 0 && cb.h > 0) {
+                        buildings.push({ x: obj.x + cb.ox, y: obj.y + cb.oy, w: cb.w, h: cb.h, label: obj.key + '-box' });
+                    }
+                } else {
+                    const def = objectDefs[obj.key];
+                    const s = obj.scale || 1;
+                    const bw = def.w * s * 0.60;
+                    const bh = def.h * s * 0.60;
+                    buildings.push({ x: obj.x - bw / 2, y: obj.y - bh * 0.95, w: bw, h: bh, label: obj.key + '-auto' });
                 }
             }
             for (const b of MANUAL_COLLISION_BOXES) {
@@ -1920,6 +2004,8 @@
                 isDragging = false;
                 panActive = false;
                 panStart = null;
+                collideEditMode = false;
+                colHandleDrag = null;
                 canvas.style.cursor = 'default';
                 if (editPalette) editPalette.classList.remove('show');
                 // 잔여 키 누름 클리어 (편집 중 눌렀던 키로 캐릭터가 갑자기 이동하는 것 방지)
@@ -1954,6 +2040,7 @@
                 const fields = [`key: '${o.key}'`, `x: ${Math.round(o.x)}`, `y: ${Math.round(o.y)}`];
                 if (o.scale && o.scale !== 1) fields.push(`scale: ${Math.round(o.scale * 100) / 100}`);
                 if (o.collideRadius !== undefined && o.collideRadius !== COLLIDE_RADIUS) fields.push(`collideRadius: ${o.collideRadius}`);
+                if (o.collideBox) { const cb = o.collideBox; fields.push(`collideBox: {ox:${cb.ox},oy:${cb.oy},w:${cb.w},h:${cb.h}}`); }
                 return `    { ${fields.join(', ')} },`;
             });
             // 코드에 그대로 붙여넣을 수 있게 DEFAULT_OBJECTS 변수명 사용 + scale 포함
@@ -2003,6 +2090,22 @@
                 resetObjectsToDefault();
                 e.preventDefault();
                 return;
+            }
+            // C 키: 선택 오브젝트 충돌 박스 편집 모드
+            if (e.code === 'KeyC') {
+                if (selectedIndex < 0) { console.log('[Collision] 오브젝트를 먼저 선택(클릭)하세요'); e.preventDefault(); return; }
+                collideEditMode = !collideEditMode;
+                if (collideEditMode) {
+                    const _o = objects[selectedIndex];
+                    if (!_o.collideBox) { const _b = getObjColBox(_o); if (_b) { setObjColBox(_o, _b); rebuildBuildings(); } }
+                    canvas.style.cursor = 'crosshair';
+                    console.log('[Collision] 편집 ON — 핸들 드래그: 리사이즈 / 박스 바디 드래그: 이동 / C 재입력: 종료');
+                } else {
+                    colHandleDrag = null;
+                    canvas.style.cursor = 'crosshair';
+                    console.log('[Collision] 편집 OFF');
+                }
+                e.preventDefault(); return;
             }
             // B 키: 박스 그리기 모드 토글 (충돌 영역 직접 그리기)
             if (e.code === 'KeyB') {
@@ -2103,6 +2206,24 @@
             }
             if (e.button !== 0) return;
             const { x: wx, y: wy } = screenToWorld(e.clientX, e.clientY);
+            // 충돌 박스 편집 모드: 핸들 또는 바디 드래그
+            if (collideEditMode && selectedIndex >= 0 && objects[selectedIndex]) {
+                const _co = objects[selectedIndex];
+                if (_co.collideBox) {
+                    const _cb = getObjColBox(_co);
+                    const _hi = hitTestColHandle(wx, wy, _cb);
+                    if (_hi >= 0) {
+                        colHandleDrag = { handleIdx: _hi, origBox: {..._cb}, origMouse: {x: wx, y: wy} };
+                        canvas.style.cursor = COL_HANDLE_CURSORS[_hi];
+                        return;
+                    }
+                    if (wx >= _cb.x && wx <= _cb.x + _cb.w && wy >= _cb.y && wy <= _cb.y + _cb.h) {
+                        colHandleDrag = { handleIdx: 8, origBox: {..._cb}, origMouse: {x: wx, y: wy} };
+                        canvas.style.cursor = 'move';
+                        return;
+                    }
+                }
+            }
             // 박스 그리기 모드: 좌클릭+드래그로 새 충돌 박스 시작
             if (boxDrawMode) {
                 isDrawingBox = true;
@@ -2140,6 +2261,32 @@
             }
             if (!editMode) return;
             const { x: wx, y: wy } = screenToWorld(e.clientX, e.clientY);
+            // 충돌 박스 드래그 처리
+            if (colHandleDrag && selectedIndex >= 0 && objects[selectedIndex]) {
+                const _co = objects[selectedIndex];
+                const dx = wx - colHandleDrag.origMouse.x;
+                const dy = wy - colHandleDrag.origMouse.y;
+                const newBox = colHandleDrag.handleIdx === 8
+                    ? { x: colHandleDrag.origBox.x + dx, y: colHandleDrag.origBox.y + dy, w: colHandleDrag.origBox.w, h: colHandleDrag.origBox.h }
+                    : applyColResize(colHandleDrag.handleIdx, colHandleDrag.origBox, dx, dy);
+                setObjColBox(_co, newBox);
+                rebuildBuildings();
+                if (editMouseEl) editMouseEl.innerText = `${Math.round(wx)}, ${Math.round(wy)}`;
+                return;
+            }
+            // 충돌 박스 hover cursor
+            if (collideEditMode && selectedIndex >= 0 && objects[selectedIndex]) {
+                const _co = objects[selectedIndex];
+                if (_co.collideBox) {
+                    const _cb = getObjColBox(_co);
+                    const _hi = hitTestColHandle(wx, wy, _cb);
+                    if (_hi >= 0) { canvas.style.cursor = COL_HANDLE_CURSORS[_hi]; if (editMouseEl) editMouseEl.innerText = `${Math.round(wx)}, ${Math.round(wy)}`; return; }
+                    if (wx >= _cb.x && wx <= _cb.x + _cb.w && wy >= _cb.y && wy <= _cb.y + _cb.h) { canvas.style.cursor = 'move'; if (editMouseEl) editMouseEl.innerText = `${Math.round(wx)}, ${Math.round(wy)}`; return; }
+                }
+                canvas.style.cursor = 'crosshair';
+                if (editMouseEl) editMouseEl.innerText = `${Math.round(wx)}, ${Math.round(wy)}`;
+                return;
+            }
             // 박스 그리기 중: 현재 마우스 위치 업데이트 (프리뷰)
             if (isDrawingBox) {
                 drawBoxCurrent = { x: wx, y: wy };
@@ -2163,6 +2310,13 @@
                 canvas.style.cursor = editMode ? 'crosshair' : 'default';
             }
             if (e.button === 0) {
+                // 충돌 박스 드래그 종료
+                if (colHandleDrag) {
+                    colHandleDrag = null;
+                    markDirty();
+                    if (editMode) canvas.style.cursor = collideEditMode ? 'crosshair' : 'crosshair';
+                    return;
+                }
                 // 박스 그리기 종료
                 if (isDrawingBox && drawBoxStart && drawBoxCurrent) {
                     const x = Math.min(drawBoxStart.x, drawBoxCurrent.x);
